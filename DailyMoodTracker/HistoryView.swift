@@ -1,0 +1,71 @@
+// HistoryView.swift
+import SwiftUI
+
+struct HistoryView: View {
+    @Environment(\.managedObjectContext) private var viewContext
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \MoodEntry.date, ascending: false)],
+        animation: .default)
+    private var entries: FetchedResults<MoodEntry>
+    
+    let moodEmojis = ["😢", "😐", "😊"]
+    let moodLabels = ["Sad", "Neutral", "Happy"]
+    
+    var body: some View {
+        NavigationView {
+            List {
+                if entries.isEmpty {
+                    Text("No entries yet. Create one from the New Entry tab!")
+                        .foregroundColor(.gray)
+                        .padding()
+                } else {
+                    ForEach(entries) { entry in
+                        VStack(alignment: .leading) {
+                            HStack {
+                                Text(formatDate(entry.date ?? Date()))
+                                    .font(.headline)
+                                
+                                Spacer()
+                                
+                                // Use entry.mood - 1 as the index to access the correct emoji
+                                Text(moodEmojis[Int(entry.mood) - 1])
+                                    .font(.title2)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(Color.purple.opacity(0.2))
+                                    .cornerRadius(10)
+                            }
+                            
+                            if let note = entry.note, !note.isEmpty {
+                                Text(note)
+                                    .padding(.top, 5)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                        .padding(.vertical, 5)
+                    }
+                    .onDelete(perform: deleteEntries)
+                }
+            }
+            .navigationTitle("History")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    EditButton()
+                }
+            }
+        }
+    }
+    
+    func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.string(from: date)
+    }
+    
+    private func deleteEntries(offsets: IndexSet) {
+        withAnimation {
+            offsets.map { entries[$0] }.forEach(viewContext.delete)
+            try? viewContext.save()
+        }
+    }
+}

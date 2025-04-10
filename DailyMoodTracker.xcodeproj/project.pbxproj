@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		90548F0B2DA77B16002E9400 /* DailyMoodTracker.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 90548F092DA77B16002E9400 /* DailyMoodTracker.xcdatamodeld */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		90D2CB8F2DA628E000F1B688 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,6 +28,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		90548F0A2DA77B16002E9400 /* DailyMoodTracker.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = DailyMoodTracker.xcdatamodel; sourceTree = "<group>"; };
 		90D2CB7E2DA628DD00F1B688 /* DailyMoodTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DailyMoodTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		90D2CB8E2DA628E000F1B688 /* DailyMoodTrackerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DailyMoodTrackerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		90D2CB982DA628E000F1B688 /* DailyMoodTrackerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DailyMoodTrackerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -75,6 +80,7 @@
 		90D2CB752DA628DD00F1B688 = {
 			isa = PBXGroup;
 			children = (
+				90548F092DA77B16002E9400 /* DailyMoodTracker.xcdatamodeld */,
 				90D2CB802DA628DD00F1B688 /* DailyMoodTracker */,
 				90D2CB912DA628E000F1B688 /* DailyMoodTrackerTests */,
 				90D2CB9B2DA628E000F1B688 /* DailyMoodTrackerUITests */,
@@ -236,6 +242,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				90548F0B2DA77B16002E9400 /* DailyMoodTracker.xcdatamodeld in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -558,6 +565,19 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCVersionGroup section */
+		90548F092DA77B16002E9400 /* DailyMoodTracker.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				90548F0A2DA77B16002E9400 /* DailyMoodTracker.xcdatamodel */,
+			);
+			currentVersion = 90548F0A2DA77B16002E9400 /* DailyMoodTracker.xcdatamodel */;
+			path = DailyMoodTracker.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+/* End XCVersionGroup section */
 	};
 	rootObject = 90D2CB762DA628DD00F1B688 /* Project object */;
 }

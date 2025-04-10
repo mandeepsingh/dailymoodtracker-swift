@@ -1,24 +1,29 @@
-//
-//  ContentView.swift
-//  DailyMoodTracker
-//
-//  Created by Mandeep Singh on 4/9/25.
-//
-
+// ContentView.swift - Main tab view
 import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        TabView {
+            EntryView()
+                .tabItem {
+                    Label("New Entry", systemImage: "plus.circle")
+                }
+            
+            HistoryView()
+                .tabItem {
+                    Label("History", systemImage: "list.bullet")
+                }
+            
+            TrendsView()
+                .tabItem {
+                    Label("Trends", systemImage: "chart.line.uptrend.xyaxis")
+                }
+            
+            SettingsView()
+                .tabItem {
+                    Label("Settings", systemImage: "gear")
+                }
         }
-        .padding()
+        .accentColor(.purple)
     }
-}
-
-#Preview {
-    ContentView()
 }
