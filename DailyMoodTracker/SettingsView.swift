@@ -1,23 +1,18 @@
-// SettingsView.swift - Simplified without authentication
+// SettingsView.swift - Simplified without system theme option
 import SwiftUI
 import StoreKit
 
 struct SettingsView: View {
     @AppStorage("isDarkMode") private var isDarkMode = false
-    @AppStorage("useSystemTheme") private var useSystemTheme = true
     @AppStorage("currentTheme") private var currentTheme = "default"
-    @State private var showingThemeStore = false
     
     var body: some View {
         NavigationView {
             List {
                 // Appearance section
                 Section(header: Text("Appearance")) {
-                    Toggle("Use System Theme", isOn: $useSystemTheme)
-                    
-                    if !useSystemTheme {
-                        Toggle("Dark Mode", isOn: $isDarkMode)
-                    }
+                    // Simple dark mode toggle
+                    Toggle("Dark Mode", isOn: $isDarkMode)
                     
                     NavigationLink(destination: ThemeStoreView()) {
                         Text("Theme Store")

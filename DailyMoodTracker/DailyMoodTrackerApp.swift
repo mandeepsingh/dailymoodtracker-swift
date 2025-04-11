@@ -4,6 +4,7 @@ import CoreData
 
 @main
 struct DailyMoodTrackerApp: App {
+    @AppStorage("isDarkMode") private var isDarkMode = false
     let persistenceController = PersistenceController.shared
     
     // Theme manager for in-app purchases
@@ -14,6 +15,9 @@ struct DailyMoodTrackerApp: App {
             ContentView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
                 .environmentObject(themeManager)
+                .preferredColorScheme(isDarkMode ? .dark : .light)
         }
     }
 }
+
+
