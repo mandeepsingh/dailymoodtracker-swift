@@ -5,29 +5,63 @@ import Foundation
 class ThemeManager: NSObject, ObservableObject {
     static let shared = ThemeManager()
     
+    // Define themes first so they can be referenced for initialization
+    static let allThemes: [Theme] = [
+        Theme(
+            id: "default",
+            name: "Default",
+            isPremium: false,
+            price: "Free",
+            colors: ThemeColors.defaultLight
+        ),
+        Theme(
+            id: "dark",
+            name: "Dark Mode",
+            isPremium: true,
+            price: "$0.99",
+            colors: ThemeColors.dark
+        ),
+        Theme(
+            id: "galaxy",
+            name: "Galaxy",
+            isPremium: true,
+            price: "$2.99",
+            colors: ThemeColors.galaxy
+        )
+    ]
+    
     @Published var purchasedThemes: [String] = []
     @Published var currentTheme: String = "default"
+    // Initialize with default theme colors directly
+    @Published var currentThemeColors: ThemeColors = ThemeColors.defaultLight
     
     private let purchasedThemesKey = "purchasedThemes"
     private let currentThemeKey = "currentTheme"
     
     // Need to use override init() since we're inheriting from NSObject
     override init() {
-        // Initialize properties before super.init()
         super.init()
         
-        // Load purchased themes from UserDefaults
+        // Load saved data after initialization
         if let savedThemes = UserDefaults.standard.stringArray(forKey: purchasedThemesKey) {
             purchasedThemes = savedThemes
         }
         
-        // Load current theme from UserDefaults
         if let savedTheme = UserDefaults.standard.string(forKey: currentThemeKey) {
             currentTheme = savedTheme
+            // Update theme colors based on saved theme
+            updateThemeColors()
         }
         
-        // Set up StoreKit transaction observer
         setupStoreKit()
+    }
+    
+    
+    // New method to update theme colors based on currentTheme
+    private func updateThemeColors() {
+        if let theme = ThemeManager.allThemes.first(where: { $0.id == currentTheme }) {
+            currentThemeColors = theme.colors
+        }
     }
     
     func setupStoreKit() {
@@ -55,9 +89,12 @@ class ThemeManager: NSObject, ObservableObject {
     }
     
     func setCurrentTheme(themeId: String) {
-        currentTheme = themeId
-        UserDefaults.standard.set(themeId, forKey: currentThemeKey)
-    }
+          currentTheme = themeId
+          UserDefaults.standard.set(themeId, forKey: currentThemeKey)
+          
+          // Update theme colors
+          updateThemeColors()
+      }
     
     private func saveThemes() {
         UserDefaults.standard.set(purchasedThemes, forKey: purchasedThemesKey)

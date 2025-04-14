@@ -4,6 +4,7 @@ import CoreData
 
 struct EntryView: View {
     @Environment(\.managedObjectContext) private var viewContext
+    @EnvironmentObject private var themeManager: ThemeManager
     @State private var selectedMood: Int = 2 // Default to Neutral (middle option)
     @State private var note: String = ""
     @State private var showAlert = false
@@ -13,76 +14,91 @@ struct EntryView: View {
     let moodLabels = ["Sad", "Neutral", "Happy"]
     
     var body: some View {
-        NavigationView {
-            VStack {
-                Text("How are you feeling today?")
-                    .font(.title)
-                    .padding()
-                
-                HStack(spacing: 20) {
-                    Spacer()
-                    
-                    ForEach(1...3, id: \.self) { value in
-                        Button(action: {
-                            selectedMood = value
-                        }) {
-                            VStack {
-                                Text(moodEmojis[value-1])
-                                    .font(.system(size: 40))
-                                    .frame(width: 80, height: 80)
-                                    .background(selectedMood == value ? Color.purple : Color.gray.opacity(0.2))
-                                    .clipShape(Circle())
-                                
-                                Text(moodLabels[value-1])
-                                    .font(.caption)
-                                    .padding(.top, 4)
-                            }
-                        }
-                    }
-                    
-                    Spacer()
-                }
-                .padding(.horizontal)
-                
-                // Rest of the view remains the same
-                Text("Notes (optional):")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                    .padding(.top)
-                
-                TextEditor(text: $note)
-                    .frame(height: 150)
-                    .padding()
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(8)
-                    .padding(.horizontal)
-                
-                Button(action: {
-                    saveMoodEntry()
-                    showAlert = true
-                }) {
-                    Text("Save Entry")
-                        .foregroundColor(.white)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.purple)
-                        .cornerRadius(10)
-                        .padding()
-                }
-                
-                Spacer()
-            }
-            .padding()
-            .navigationTitle("New Entry")
-            .alert(isPresented: $showAlert) {
-                Alert(
-                    title: Text("Success"),
-                    message: Text("Your mood has been recorded!"),
-                    dismissButton: .default(Text("OK"))
-                )
-            }
-        }
-    }
+          NavigationView {
+              ZStack {
+                  // Background color from theme
+                  themeManager.currentThemeColors.background
+                      .ignoresSafeArea()
+                  
+                  VStack {
+                      Text("How are you feeling today?")
+                          .font(.title)
+                          .foregroundColor(themeManager.currentThemeColors.text)
+                          .padding()
+                      
+                      HStack(spacing: 20) {
+                          Spacer()
+                          
+                          ForEach(1...3, id: \.self) { value in
+                              Button(action: {
+                                  selectedMood = value
+                              }) {
+                                  VStack {
+                                      Text(moodEmojis[value-1])
+                                          .font(.system(size: 40))
+                                          .frame(width: 80, height: 80)
+                                          .background(selectedMood == value ?
+                                              themeManager.currentThemeColors.accent :
+                                              themeManager.currentThemeColors.card)
+                                          .foregroundColor(themeManager.currentThemeColors.text)
+                                          .clipShape(Circle())
+                                      
+                                      Text(moodLabels[value-1])
+                                          .font(.caption)
+                                          .foregroundColor(themeManager.currentThemeColors.text)
+                                          .padding(.top, 4)
+                                  }
+                              }
+                          }
+                          
+                          Spacer()
+                      }
+                      .padding(.horizontal)
+                      
+                      Text("Notes (optional):")
+                          .frame(maxWidth: .infinity, alignment: .leading)
+                          .foregroundColor(themeManager.currentThemeColors.text)
+                          .padding(.horizontal)
+                          .padding(.top)
+                      
+                      TextEditor(text: $note)
+                          .frame(height: 150)
+                          .padding()
+                          .background(Color.white)
+                          .foregroundColor(.black)
+                          .cornerRadius(8)
+                          .padding(.horizontal)
+                      
+                      Button(action: {
+                          saveMoodEntry()
+                          showAlert = true
+                      }) {
+                          Text("Save Entry")
+                              .foregroundColor(.white)
+                              .padding()
+                              .frame(maxWidth: .infinity)
+                              .background(themeManager.currentThemeColors.primary)
+                              .cornerRadius(10)
+                              .padding()
+                      }
+                      
+                      Spacer()
+                  }
+                  .padding()
+              }
+                .navigationTitle("New Entry")
+                .toolbarColorScheme(.dark, for: .navigationBar)
+                .toolbarBackground(themeManager.currentThemeColors.accent, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
+              .alert(isPresented: $showAlert) {
+                  Alert(
+                      title: Text("Success"),
+                      message: Text("Your mood has been recorded!"),
+                      dismissButton: .default(Text("OK"))
+                  )
+              }
+          }
+      }
     
     func saveMoodEntry() {
           // Create a new MoodEntry using NSEntityDescription

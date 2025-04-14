@@ -14,18 +14,9 @@ struct ThemeStoreView: View {
     @EnvironmentObject private var themeManager: ThemeManager
     @State private var isLoading = false
     
-    // Sample theme data
-    let themes = [
-        Theme(id: "default", name: "Default", isPremium: false, price: "Free"),
-        Theme(id: "galaxy", name: "Galaxy", isPremium: true, price: "$2.99"),
-        Theme(id: "ocean", name: "Ocean Blue", isPremium: true, price: "$2.99"),
-        Theme(id: "forest", name: "Forest Green", isPremium: true, price: "$2.99"),
-        Theme(id: "sunset", name: "Sunset Orange", isPremium: true, price: "$2.99")
-    ]
-    
     var body: some View {
         List {
-            ForEach(themes) { theme in
+            ForEach(ThemeManager.allThemes) { theme in
                 ThemeRow(
                     theme: theme,
                     isPurchased: !theme.isPremium || themeManager.purchasedThemes.contains(theme.id),
@@ -71,13 +62,68 @@ struct ThemeStoreView: View {
     
     func restorePurchases() {
         isLoading = true
-        
-        // In a real app, this would call StoreKit's restore API
         themeManager.restorePurchases()
         
         // Simulate delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             isLoading = false
+        }
+    }
+}
+
+// Preview of the Galaxy theme
+struct GalaxyThemePreview: View {
+    let theme: Theme
+    
+    var body: some View {
+        VStack(spacing: 10) {
+            // Star field
+            ZStack {
+                // Background
+                Rectangle()
+                    .fill(theme.colors.background)
+                    .frame(height: 100)
+                
+                // Stars
+                ForEach(0..<20, id: \.self) { i in
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: CGFloat.random(in: 1...3), height: CGFloat.random(in: 1...3))
+                        .position(
+                            x: CGFloat.random(in: 0...200),
+                            y: CGFloat.random(in: 0...100)
+                        )
+                        .opacity(Double.random(in: 0.3...1.0))
+                }
+                
+                // Galaxy swirl
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [theme.colors.accent.opacity(0.5), theme.colors.primary.opacity(0.1)]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 70, height: 70)
+                    .blur(radius: 15)
+                    .offset(x: -20, y: 10)
+            }
+            .cornerRadius(8)
+            
+            // UI elements preview with Galaxy theme
+            HStack {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(theme.colors.primary)
+                    .frame(width: 60, height: 20)
+                
+                Spacer()
+                
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(theme.colors.accent)
+                    .frame(width: 40, height: 20)
+            }
+            .padding(.horizontal, 10)
         }
     }
 }
@@ -149,10 +195,19 @@ struct ThemeRow: View {
     }
 }
 
-// Theme model
 struct Theme: Identifiable {
     let id: String
     let name: String
     let isPremium: Bool
     let price: String
+    let colors: ThemeColors
+    
+    // Add an initializer to resolve the "extra argument" error
+    init(id: String, name: String, isPremium: Bool, price: String, colors: ThemeColors) {
+        self.id = id
+        self.name = name
+        self.isPremium = isPremium
+        self.price = price
+        self.colors = colors
+    }
 }

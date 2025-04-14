@@ -2,22 +2,20 @@
 import SwiftUI
 import CoreData
 
+// In your App.swift file
 @main
 struct DailyMoodTrackerApp: App {
-    @AppStorage("isDarkMode") private var isDarkMode = false
     let persistenceController = PersistenceController.shared
     
-    // Theme manager for in-app purchases
     @StateObject private var themeManager = ThemeManager.shared
     
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
+                .environment(\.themeColors, themeManager.currentThemeColors)
                 .environmentObject(themeManager)
-                .preferredColorScheme(isDarkMode ? .dark : .light)
+                // Remove the preferredColorScheme modifier
         }
     }
 }
-
-
