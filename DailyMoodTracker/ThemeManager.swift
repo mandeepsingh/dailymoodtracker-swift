@@ -22,12 +22,27 @@ class ThemeManager: NSObject, ObservableObject {
             colors: ThemeColors.dark
         ),
         Theme(
-            id: "galaxy",
-            name: "Galaxy",
+              id: "sunlight",
+              name: "Sunlight",
+              isPremium: true,
+              price: "$1.99",
+              colors: ThemeColors.sunlight
+          ),
+        Theme(
+            id: "tides",
+            name: "Tides",
             isPremium: true,
-            price: "$2.99",
-            colors: ThemeColors.galaxy
+            price: "$1.99",
+            colors: ThemeColors.tides
+        ),
+        Theme(
+            id: "meadow",
+            name: "Meadow",
+            isPremium: true,
+            price: "$1.99",
+            colors: ThemeColors.meadow
         )
+        
     ]
     
     @Published var purchasedThemes: [String] = []

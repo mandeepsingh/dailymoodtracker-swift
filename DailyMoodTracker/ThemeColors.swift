@@ -58,20 +58,49 @@ struct ThemeColors {
         tabBarUnselected: Color.gray
     )
     
-    // Galaxy theme colors
-    static let galaxy = ThemeColors(
-        primary: Color(hex: "#2668c2"),
-        background: Color(hex: "#313488"),
-        card: Color(hex: "#419bc9").opacity(0.7),
-        text: Color.white,
-        accent: Color(hex: "#76ffd6"),
-        shadow: Color.black.opacity(0.5),
-        navBarBackground: Color(hex: "#2668c2"),
-        navBarText: Color.white,
-        tabBarBackground: Color(hex: "#2668c2"),
-        tabBarSelected: Color(hex: "#76ffd6"),
-        tabBarUnselected: Color(hex: "#5ccdd0").opacity(0.6)
+    // Add to ThemeColors.swift
+    static let sunlight = ThemeColors(
+        primary: Color(hex: "#DD5E11"),      // Deep orange for primary actions
+        background: Color(hex: "#E9EBED"),   // Light gray for background
+        card: Color.white,                   // White for cards
+        text: Color(hex: "#333333"),         // Dark gray for text
+        accent: Color(hex: "#FFAB28"),       // Warm orange accent
+        shadow: Color.black.opacity(0.1),    // Subtle shadows
+        navBarBackground: Color(hex: "#FFDC78"), // Soft yellow for nav bar
+        navBarText: Color(hex: "#DD5E11"),   // Deep orange nav text
+        tabBarBackground: Color(hex: "#E9EBED"), // Light gray tab bar
+        tabBarSelected: Color(hex: "#DD5E11"),   // Deep orange for selected tabs
+        tabBarUnselected: Color.gray         // Gray for unselected tabs
     )
+    
+    static let tides = ThemeColors(
+        primary: Color(hex: "#1ABBEF"),     // Medium blue for primary elements
+        background: Color(hex: "#E9EBED"),  // Light gray/white for background
+        card: Color.white,                  // White for cards
+        text: Color(hex: "#006F98"),        // Dark blue for text
+        accent: Color(hex: "#7FD2FD"),      // Light blue for accents
+        shadow: Color.black.opacity(0.1),   // Light shadow
+        navBarBackground: Color(hex: "#1ABBEF"), // Medium blue for navbar
+        navBarText: Color.white,            // White text for navbar
+        tabBarBackground: Color(hex: "#006F98"), // Dark blue for tab bar
+        tabBarSelected: Color(hex: "#7FD2FD"),   // Light blue for selected tabs
+        tabBarUnselected: Color.white.opacity(0.7) // White for unselected tabs
+    )
+    
+    static let meadow = ThemeColors(
+        primary: Color(hex: "#56B84D"),     // Medium green for primary elements
+        background: Color(hex: "#E9EBED"),  // Light gray/white for background
+        card: Color.white,                  // White for cards
+        text: Color(hex: "#0F782E"),        // Dark green for text
+        accent: Color(hex: "#FFDA81"),      // Light orange/gold for accents
+        shadow: Color.black.opacity(0.1),   // Light shadow
+        navBarBackground: Color(hex: "#56B84D"), // Medium green for navbar
+        navBarText: Color.white,            // White text for navbar
+        tabBarBackground: Color(hex: "#0F782E"), // Dark green for tab bar
+        tabBarSelected: Color(hex: "#FFDA81"),   // Light orange/gold for selected tabs
+        tabBarUnselected: Color.white.opacity(0.7) // White for unselected tabs
+    )
+    
 }
 
 // Add this extension to use hex colors
@@ -100,4 +129,3 @@ extension Color {
         )
     }
 }
-
