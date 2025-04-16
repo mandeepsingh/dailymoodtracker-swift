@@ -13,6 +13,8 @@ import StoreKit
 struct ThemeStoreView: View {
     @EnvironmentObject private var themeManager: ThemeManager
     @State private var isLoading = false
+    @State private var themeToConfirm: Theme? = nil
+    @State private var showPurchaseConfirmation = false
     
     var body: some View {
         List {
@@ -43,9 +45,32 @@ struct ThemeStoreView: View {
                     .cornerRadius(10)
             }
         }
+        .confirmationDialog(
+            "Purchase \(themeToConfirm?.name ?? "Theme")",
+            isPresented: $showPurchaseConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Purchase for \(themeToConfirm?.price ?? "$0.99")") {
+                confirmPurchase()
+            }
+            
+            Button("Cancel", role: .cancel) {
+                themeToConfirm = nil
+            }
+        } message: {
+            Text("Would you like to purchase this theme?")
+        }
     }
     
+    
     func purchaseTheme(_ theme: Theme) {
+        themeToConfirm = theme
+        showPurchaseConfirmation = true
+    }
+    
+    func confirmPurchase() {
+        guard let theme = themeToConfirm else { return }
+        
         isLoading = true
         
         // In a real app, use StoreKit API here
@@ -53,6 +78,7 @@ struct ThemeStoreView: View {
             themeManager.addPurchasedTheme(themeId: theme.id)
             themeManager.setCurrentTheme(themeId: theme.id)
             isLoading = false
+            themeToConfirm = nil
         }
     }
     
