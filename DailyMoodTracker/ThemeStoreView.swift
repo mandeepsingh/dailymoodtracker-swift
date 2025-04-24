@@ -15,6 +15,8 @@ struct ThemeStoreView: View {
     @State private var isLoading = false
     @State private var themeToConfirm: Theme? = nil
     @State private var showPurchaseConfirmation = false
+    @State private var errorMessage: String = ""
+    @State private var showError: Bool = false
     
     var body: some View {
         List {
@@ -23,6 +25,7 @@ struct ThemeStoreView: View {
                     theme: theme,
                     isPurchased: !theme.isPremium || themeManager.purchasedThemes.contains(theme.id),
                     isActive: themeManager.currentTheme == theme.id,
+                    price: formattedPrice(for: theme),
                     onPurchase: { purchaseTheme(theme) },
                     onActivate: { activateTheme(theme) }
                 )
@@ -60,8 +63,52 @@ struct ThemeStoreView: View {
         } message: {
             Text("Would you like to purchase this theme?")
         }
+        // Use SwiftUI's onReceive instead of notification observers
+        .onReceive(NotificationCenter.default.publisher(for: .productsLoaded)) { _ in
+            isLoading = false
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .purchaseCompleted)) { notification in
+            isLoading = false
+            if let themeId = notification.userInfo?["themeId"] as? String {
+                themeManager.setCurrentTheme(themeId: themeId)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .purchaseFailed)) { notification in
+            isLoading = false
+            if let error = notification.userInfo?["error"] as? String {
+                errorMessage = error
+                showError = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .restoreCompleted)) { _ in
+            isLoading = false
+        }
+        .onAppear {
+            // Load products if not already loaded
+            if themeManager.products.isEmpty {
+                isLoading = true
+                themeManager.setupStoreKit()
+            }
+        }
+        .alert(isPresented: $showError) {
+            Alert(
+                title: Text("Error"),
+                message: Text(errorMessage),
+                dismissButton: .default(Text("OK"))
+            )
+        }
     }
     
+    // Helper to get formatted price
+    func formattedPrice(for theme: Theme) -> String {
+        guard theme.isPremium else { return "Free" }
+        
+        if let product = themeManager.getProduct(for: theme.id) {
+            return themeManager.formattedPrice(for: product)
+        }
+        
+        return theme.price
+    }
     
     func purchaseTheme(_ theme: Theme) {
         themeToConfirm = theme
@@ -72,14 +119,8 @@ struct ThemeStoreView: View {
         guard let theme = themeToConfirm else { return }
         
         isLoading = true
-        
-        // In a real app, use StoreKit API here
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            themeManager.addPurchasedTheme(themeId: theme.id)
-            themeManager.setCurrentTheme(themeId: theme.id)
-            isLoading = false
-            themeToConfirm = nil
-        }
+        themeManager.purchaseTheme(themeId: theme.id)
+        themeToConfirm = nil
     }
     
     func activateTheme(_ theme: Theme) {
@@ -89,68 +130,6 @@ struct ThemeStoreView: View {
     func restorePurchases() {
         isLoading = true
         themeManager.restorePurchases()
-        
-        // Simulate delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            isLoading = false
-        }
-    }
-}
-
-// Preview of the Galaxy theme
-struct GalaxyThemePreview: View {
-    let theme: Theme
-    
-    var body: some View {
-        VStack(spacing: 10) {
-            // Star field
-            ZStack {
-                // Background
-                Rectangle()
-                    .fill(theme.colors.background)
-                    .frame(height: 100)
-                
-                // Stars
-                ForEach(0..<20, id: \.self) { i in
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: CGFloat.random(in: 1...3), height: CGFloat.random(in: 1...3))
-                        .position(
-                            x: CGFloat.random(in: 0...200),
-                            y: CGFloat.random(in: 0...100)
-                        )
-                        .opacity(Double.random(in: 0.3...1.0))
-                }
-                
-                // Galaxy swirl
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            gradient: Gradient(colors: [theme.colors.accent.opacity(0.5), theme.colors.primary.opacity(0.1)]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 70, height: 70)
-                    .blur(radius: 15)
-                    .offset(x: -20, y: 10)
-            }
-            .cornerRadius(8)
-            
-            // UI elements preview with Galaxy theme
-            HStack {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(theme.colors.primary)
-                    .frame(width: 60, height: 20)
-                
-                Spacer()
-                
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(theme.colors.accent)
-                    .frame(width: 40, height: 20)
-            }
-            .padding(.horizontal, 10)
-        }
     }
 }
 
@@ -159,6 +138,7 @@ struct ThemeRow: View {
     let theme: Theme
     let isPurchased: Bool
     let isActive: Bool
+    let price: String
     let onPurchase: () -> Void
     let onActivate: () -> Void
     
@@ -190,7 +170,7 @@ struct ThemeRow: View {
                     }
                     
                     if theme.isPremium && !isPurchased {
-                        Text(theme.price)
+                        Text(price)
                             .font(.caption)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 2)
