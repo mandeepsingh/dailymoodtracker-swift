@@ -2,8 +2,21 @@ import StoreKit
 import Foundation
 
 // Make ThemeManager inherit from NSObject
-class ThemeManager: NSObject, ObservableObject {
+class ThemeManager: NSObject, ObservableObject, SKProductsRequestDelegate {
+    
     static let shared = ThemeManager()
+    let themeProductIDs = [
+        "com.compileandcry.dailymoodtracker.darktheme",
+        "com.compileandcry.DailyMoodTracker.tidestheme",
+        "com.compileandcry.DailyMoodTracker.meadowtheme",
+        "com.compileandcry.DailyMoodTracker.sunlighttheme"
+    ]
+    let themeToProductIDMap: [String: String] = [
+        "dark": "com.compileandcry.dailymoodtracker.darktheme",
+        "tides": "com.compileandcry.DailyMoodTracker.tidestheme",
+        "meadow": "com.compileandcry.DailyMoodTracker.meadowtheme",
+        "sunlight": "com.compileandcry.DailyMoodTracker.sunlighttheme"
+    ]
     
     // Define themes first so they can be referenced for initialization
     static let allThemes: [Theme] = [
@@ -44,7 +57,9 @@ class ThemeManager: NSObject, ObservableObject {
         )
         
     ]
-    
+
+    private var productsRequest: SKProductsRequest?
+    @Published var availableProducts: [SKProduct] = []
     @Published var purchasedThemes: [String] = []
     @Published var currentTheme: String = "default"
     // Initialize with default theme colors directly
@@ -80,15 +95,49 @@ class ThemeManager: NSObject, ObservableObject {
     }
     
     func setupStoreKit() {
-        // Set up transaction observer for StoreKit
-        SKPaymentQueue.default().add(self)
+         // Set up transaction observer for StoreKit
+         SKPaymentQueue.default().add(self)
+         
+         // Request product information
+         let request = SKProductsRequest(productIdentifiers: Set(themeProductIDs))
+         productsRequest = request
+         request.delegate = self // This should now work with the protocol conformance
+         request.start()
+     }
+    
+    // Implement the required SKProductsRequestDelegate methods
+    func productsRequest(_ request: SKProductsRequest, didReceive response: SKProductsResponse) {
+        // Store the available products
+        self.availableProducts = response.products
+        
+        // Log information about the products
+        for product in response.products {
+            print("Found product: \(product.productIdentifier) \(product.localizedTitle) \(product.price.floatValue)")
+        }
+        
+        // Log any invalid product identifiers
+        if !response.invalidProductIdentifiers.isEmpty {
+            print("Invalid product identifiers: \(response.invalidProductIdentifiers)")
+        }
     }
     
-    func purchaseTheme(productId: String) {
-        // Implement StoreKit purchase flow
+    func request(_ request: SKRequest, didFailWithError error: Error) {
+        print("Product request failed: \(error.localizedDescription)")
+    }
+    
+    func getProductID(for themeID: String) -> String? {
+        return themeToProductIDMap[themeID]
+    }
+    
+    func purchaseTheme(themeId: String) {
+        guard let productID = getProductID(for: themeId),
+              let product = availableProducts.first(where: { $0.productIdentifier == productID }) else {
+            print("Product not found")
+            return
+        }
         
-        // For demo purposes:
-        addPurchasedTheme(themeId: productId)
+        let payment = SKPayment(product: product)
+        SKPaymentQueue.default().add(payment)
     }
     
     func restorePurchases() {
