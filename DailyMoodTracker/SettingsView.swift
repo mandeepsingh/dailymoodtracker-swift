@@ -12,6 +12,8 @@ struct SettingsView: View {
     @State private var showingClearConfirmation = false
     @State private var showingExportSuccess = false
     @State private var showingClearSuccess = false
+    @State private var showPrivacySheet = false
+    @State private var showTermsSheet = false
     
     var body: some View {
         NavigationView {
@@ -50,9 +52,11 @@ struct SettingsView: View {
                     }
                     
                     Button("Privacy Policy") {
-                        if let url = URL(string: "https://yourapp.com/privacy") {
-                            UIApplication.shared.open(url)
-                        }
+                        showPrivacySheet = true
+                    }
+                    
+                    Button("Terms of Use") {
+                        showTermsSheet = true
                     }
                     
                     Button("Rate App") {
@@ -89,6 +93,12 @@ struct SettingsView: View {
                 if let fileURL = exportedFileURL {
                     ActivityViewController(items: [fileURL], isPresented: $showingExportSheet)
                 }
+            }
+            .sheet(isPresented: $showPrivacySheet) {
+                PrivacyPolicyView()
+            }
+            .sheet(isPresented: $showTermsSheet) {
+                TermsOfUseView()
             }
         }
     }
@@ -190,6 +200,120 @@ struct SettingsView: View {
     }
 }
 
+struct PrivacyPolicyView: View {
+    @Environment(\.presentationMode) var presentationMode
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("Privacy Policy")
+                        .font(.title)
+                        .fontWeight(.bold)
+                    
+                    Group {
+                        Text("Last Updated: April 23, 2025")
+                            .fontWeight(.semibold)
+                        
+                        Text("This Privacy Policy describes how your personal information is collected, used, and shared when you use the DailyMoodTracker app.")
+                        
+                        Text("Information We Collect")
+                            .font(.headline)
+                        
+                        Text("DailyMoodTracker stores all user data locally on your device. We do not collect, store, or transmit your mood entries or personal information to our servers.")
+                        
+                        Text("In-App Purchases")
+                            .font(.headline)
+                        
+                        Text("When you make an in-app purchase, the transaction is processed by Apple. We receive only anonymized information about purchases to validate them. Your payment information is never shared with us.")
+                        
+                        Text("Data Export")
+                            .font(.headline)
+                        
+                        Text("Any data exported from the app is controlled by you and shared at your discretion. We do not have access to exported data files.")
+                        
+                        Text("Changes to this Policy")
+                            .font(.headline)
+                        
+                        Text("We may update this privacy policy from time to time. We will notify you of any changes by posting the new privacy policy in the app.")
+                        
+                        Text("Contact Us")
+                            .font(.headline)
+                        
+                        Text("If you have any questions about our privacy practices or this policy, please contact us at mandeep.wsu@gmail.com.")
+                    }
+                    
+                    Spacer()
+                }
+                .padding()
+            }
+            .navigationBarTitle("Privacy Policy", displayMode: .inline)
+            .navigationBarItems(trailing: Button("Done") {
+                presentationMode.wrappedValue.dismiss()
+            })
+        }
+    }
+}
+
+struct TermsOfUseView: View {
+    @Environment(\.presentationMode) var presentationMode
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("Terms of Use")
+                        .font(.title)
+                        .fontWeight(.bold)
+                    
+                    Group {
+                        Text("Last Updated: April 23, 2025")
+                            .fontWeight(.semibold)
+                        
+                        Text("By downloading or using the DailyMoodTracker app, you agree to be bound by these Terms of Use.")
+                        
+                        Text("App License")
+                            .font(.headline)
+                        
+                        Text("DailyMoodTracker grants you a limited, non-transferable, non-exclusive license to use the Application on any iOS products that you own or control.")
+                        
+                        Text("In-App Purchases")
+                            .font(.headline)
+                        
+                        Text("DailyMoodTracker offers premium themes via in-app purchases. All purchases are final and non-refundable, except as required by law. Premium content is linked to your Apple ID.")
+                        
+                        Text("User Data")
+                            .font(.headline)
+                        
+                        Text("You retain all rights to your mood entries and personal data. We do not claim ownership of your content.")
+                        
+                        Text("Prohibited Uses")
+                            .font(.headline)
+                        
+                        Text("You agree not to use the app for any illegal purpose or to violate any local, state, national, or international law.")
+                        
+                        Text("Termination")
+                            .font(.headline)
+                        
+                        Text("We may terminate or suspend your access to the app immediately, without prior notice or liability, for any reason, including without limitation if you breach these Terms of Use.")
+                        
+                        Text("Changes to Terms")
+                            .font(.headline)
+                        
+                        Text("We reserve the right to modify these terms at any time. We will provide notice of any significant changes.")
+                    }
+                    
+                    Spacer()
+                }
+                .padding()
+            }
+            .navigationBarTitle("Terms of Use", displayMode: .inline)
+            .navigationBarItems(trailing: Button("Done") {
+                presentationMode.wrappedValue.dismiss()
+            })
+        }
+    }
+}
 
 struct ActivityViewController: UIViewControllerRepresentable {
     var items: [Any]
