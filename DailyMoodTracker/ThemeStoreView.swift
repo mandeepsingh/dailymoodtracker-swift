@@ -5,8 +5,6 @@
 //  Created by Mandeep Singh on 4/9/25.
 //
 
-
-// ThemeStoreView.swift
 import SwiftUI
 import StoreKit
 
@@ -17,8 +15,10 @@ struct ThemeStoreView: View {
     @State private var showPurchaseConfirmation = false
     @State private var errorMessage: String = ""
     @State private var showError: Bool = false
+    @Environment(\.presentationMode) var presentationMode
     
     var body: some View {
+        // No NavigationView needed here - it's provided by parent
         List {
             ForEach(ThemeManager.allThemes) { theme in
                 ThemeRow(
@@ -32,6 +32,7 @@ struct ThemeStoreView: View {
             }
         }
         .navigationTitle("Theme Store")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .bottomBar) {
                 Button("Restore Purchases") {
@@ -39,6 +40,27 @@ struct ThemeStoreView: View {
                 }
                 .disabled(isLoading)
             }
+            
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button("Back") {
+                    presentationMode.wrappedValue.dismiss()
+                }
+            }
+            
+            #if DEBUG
+            // Add to ThemeStoreView.swift, inside the toolbar section
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: {
+                    themeManager.toggleDeveloperMode()
+                }) {
+                    Label(
+                        themeManager.developerModeEnabled ? "Dev Mode: ON" : "Dev Mode: OFF",
+                        systemImage: "hammer.fill"
+                    )
+                    .font(.caption)
+                }
+            }
+            #endif
         }
         .overlay {
             if isLoading {
@@ -97,6 +119,9 @@ struct ThemeStoreView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
+        // Add theme background support
+        .background(themeManager.currentThemeColors.background)
+        .scrollContentBackground(.hidden) // iOS 16+ to hide default background
     }
     
     // Helper to get formatted price
@@ -133,7 +158,7 @@ struct ThemeStoreView: View {
     }
 }
 
-// Theme row in theme store
+// Theme row in theme store - no changes needed
 struct ThemeRow: View {
     let theme: Theme
     let isPurchased: Bool

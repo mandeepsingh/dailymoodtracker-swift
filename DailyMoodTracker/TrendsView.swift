@@ -21,42 +21,41 @@ struct TrendsView: View {
     let moodLabels = ["Sad", "Neutral", "Happy"]
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                // Background color
-                themeManager.currentThemeColors.background
-                    .ignoresSafeArea()
-                
-                ScrollView {
-                    if allEntries.isEmpty {
-                        VStack(spacing: 20) {
-                            Text("No entries yet")
-                                .font(.headline)
-                                .foregroundColor(themeManager.currentThemeColors.text)
-                                .padding(.top, 50)
-                            
-                            Text("Add your first mood entry in the New Entry tab")
-                                .multilineTextAlignment(.center)
-                                .foregroundColor(themeManager.currentThemeColors.text.opacity(0.7))
-                                .padding(.horizontal)
-                        }
-                    } else {
-                        VStack(alignment: .leading, spacing: 20) {
-                            weeklyChartView
-                            
-                            statsSummaryView
-                            
-                            moodDistributionView
-                        }
-                        .padding()
+        // Removed the outer NavigationView since it's provided by ModifiedContentView
+        ZStack {
+            // Background color
+            themeManager.currentThemeColors.background
+                .ignoresSafeArea()
+            
+            ScrollView {
+                if allEntries.isEmpty {
+                    VStack(spacing: 20) {
+                        Text("No entries yet")
+                            .font(.headline)
+                            .foregroundColor(themeManager.currentThemeColors.text)
+                            .padding(.top, 50)
+                        
+                        Text("Add your first mood entry in the New Entry tab")
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(themeManager.currentThemeColors.text.opacity(0.7))
+                            .padding(.horizontal)
                     }
+                } else {
+                    VStack(alignment: .leading, spacing: 20) {
+                        weeklyChartView
+                        
+                        statsSummaryView
+                        
+                        moodDistributionView
+                    }
+                    .padding()
                 }
             }
-            .navigationTitle("Mood Trends")
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(themeManager.currentThemeColors.accent, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
         }
+        .navigationTitle("Mood Trends")
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbarBackground(themeManager.currentThemeColors.accent, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
     }
     
     // Weekly mood chart

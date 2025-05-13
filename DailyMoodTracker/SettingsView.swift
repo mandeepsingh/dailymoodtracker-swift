@@ -7,6 +7,7 @@ import CoreData
 struct SettingsView: View {
     @AppStorage("currentTheme") private var currentTheme = "default"
     @Environment(\.managedObjectContext) private var viewContext
+    @EnvironmentObject private var themeManager: ThemeManager
     @State private var showingExportSheet = false
     @State private var exportedFileURL: URL?
     @State private var showingClearConfirmation = false
@@ -16,91 +17,94 @@ struct SettingsView: View {
     @State private var showTermsSheet = false
     
     var body: some View {
-        NavigationView {
-            List {
-                // Appearance section
-                Section(header: Text("Appearance")) {
-                    NavigationLink(destination: ThemeStoreView()) {
-                        Text("Theme Store")
-                    }
+        // Removed the outer NavigationView since it's provided in ModifiedContentView
+        List {
+            // Appearance section
+            Section(header: Text("Appearance")) {
+                NavigationLink(destination: ThemeStoreView()) {
+                    Text("Theme Store")
+                }
+            }
+            
+            // Data management section
+            Section {
+                Button("Export Data") {
+                    exportData()
                 }
                 
-                // Data management section
-                Section {
-                    Button("Export Data") {
-                        exportData()
-                    }
-                    
-                    Button("Clear All Data") {
-                        showingClearConfirmation = true
-                    }
-                    .foregroundColor(.red)
-                } header: {
-                    Text("Data")
-                } footer: {
-                    Text("Clearing data will permanently remove all your mood entries.")
-                        .font(.caption)
+                Button("Clear All Data") {
+                    showingClearConfirmation = true
+                }
+                .foregroundColor(.red)
+            } header: {
+                Text("Data")
+            } footer: {
+                Text("Clearing data will permanently remove all your mood entries.")
+                    .font(.caption)
+            }
+            
+            // App information section
+            Section(header: Text("About")) {
+                HStack {
+                    Text("Version")
+                    Spacer()
+                    Text("1.0.0")
+                        .foregroundColor(.gray)
                 }
                 
-                // App information section
-                Section(header: Text("About")) {
-                    HStack {
-                        Text("Version")
-                        Spacer()
-                        Text("1.0.0")
-                            .foregroundColor(.gray)
-                    }
-                    
-                    Button("Privacy Policy") {
-                        showPrivacySheet = true
-                    }
-                    
-                    Button("Terms of Use") {
-                        showTermsSheet = true
-                    }
-                    
-                    Button("Rate App") {
-                        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-                            SKStoreReviewController.requestReview(in: scene)
-                        }
+                Button("Privacy Policy") {
+                    showPrivacySheet = true
+                }
+                
+                Button("Terms of Use") {
+                    showTermsSheet = true
+                }
+                
+                Button("Rate App") {
+                    if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                        SKStoreReviewController.requestReview(in: scene)
                     }
                 }
-            }
-            .navigationTitle("Settings")
-            .confirmationDialog(
-                "Clear All Data",
-                isPresented: $showingClearConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button("Delete All Data", role: .destructive) {
-                    clearAllData()
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This will permanently delete all your mood entries. This action cannot be undone.")
-            }
-            .alert("Data Exported", isPresented: $showingExportSuccess) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text("Your mood data has been successfully exported.")
-            }
-            .alert("Data Cleared", isPresented: $showingClearSuccess) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text("All mood entries have been permanently deleted.")
-            }
-            .sheet(isPresented: $showingExportSheet) {
-                if let fileURL = exportedFileURL {
-                    ActivityViewController(items: [fileURL], isPresented: $showingExportSheet)
-                }
-            }
-            .sheet(isPresented: $showPrivacySheet) {
-                PrivacyPolicyView()
-            }
-            .sheet(isPresented: $showTermsSheet) {
-                TermsOfUseView()
             }
         }
+        .navigationTitle("Settings")
+        .confirmationDialog(
+            "Clear All Data",
+            isPresented: $showingClearConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete All Data", role: .destructive) {
+                clearAllData()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will permanently delete all your mood entries. This action cannot be undone.")
+        }
+        .alert("Data Exported", isPresented: $showingExportSuccess) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Your mood data has been successfully exported.")
+        }
+        .alert("Data Cleared", isPresented: $showingClearSuccess) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("All mood entries have been permanently deleted.")
+        }
+        .sheet(isPresented: $showingExportSheet) {
+            if let fileURL = exportedFileURL {
+                ActivityViewController(items: [fileURL], isPresented: $showingExportSheet)
+            }
+        }
+        .sheet(isPresented: $showPrivacySheet) {
+            PrivacyPolicyView()
+        }
+        .sheet(isPresented: $showTermsSheet) {
+            TermsOfUseView()
+        }
+        // Add theme-based styling for the list
+        .listStyle(InsetGroupedListStyle())
+        .background(themeManager.currentThemeColors.background)
+        .scrollContentBackground(.hidden) // iOS 16+ to hide default background
     }
     
     // Function to export all mood data to JSON
@@ -199,6 +203,8 @@ struct SettingsView: View {
         }
     }
 }
+
+// Keep the PrivacyPolicyView, TermsOfUseView, and ActivityViewController unchanged
 
 struct PrivacyPolicyView: View {
     @Environment(\.presentationMode) var presentationMode

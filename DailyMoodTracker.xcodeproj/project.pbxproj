@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		90548F0B2DA77B16002E9400 /* DailyMoodTracker.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 90548F092DA77B16002E9400 /* DailyMoodTracker.xcdatamodeld */; };
+		90E7C4742DD0617600B6F2EA /* StoreKitConfig.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 90E7C4732DD0617600B6F2EA /* StoreKitConfig.storekit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -32,11 +33,25 @@
 		90D2CB7E2DA628DD00F1B688 /* DailyMoodTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DailyMoodTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		90D2CB8E2DA628E000F1B688 /* DailyMoodTrackerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DailyMoodTrackerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		90D2CB982DA628E000F1B688 /* DailyMoodTrackerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DailyMoodTrackerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		90E7C4732DD0617600B6F2EA /* StoreKitConfig.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = StoreKitConfig.storekit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		90E7C4762DD073E400B6F2EA /* Exceptions for "DailyMoodTracker" folder in "DailyMoodTracker" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 90D2CB7D2DA628DD00F1B688 /* DailyMoodTracker */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		90D2CB802DA628DD00F1B688 /* DailyMoodTracker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				90E7C4762DD073E400B6F2EA /* Exceptions for "DailyMoodTracker" folder in "DailyMoodTracker" target */,
+			);
 			path = DailyMoodTracker;
 			sourceTree = "<group>";
 		};
@@ -80,6 +95,7 @@
 		90D2CB752DA628DD00F1B688 = {
 			isa = PBXGroup;
 			children = (
+				90E7C4732DD0617600B6F2EA /* StoreKitConfig.storekit */,
 				90548F092DA77B16002E9400 /* DailyMoodTracker.xcdatamodeld */,
 				90D2CB802DA628DD00F1B688 /* DailyMoodTracker */,
 				90D2CB912DA628E000F1B688 /* DailyMoodTrackerTests */,
@@ -218,6 +234,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				90E7C4742DD0617600B6F2EA /* StoreKitConfig.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -406,11 +423,13 @@
 				DEVELOPMENT_TEAM = AH4XXV5FXT;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DailyMoodTracker/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Daily Mood Tracker";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = NO;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -437,11 +456,13 @@
 				DEVELOPMENT_TEAM = AH4XXV5FXT;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DailyMoodTracker/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Daily Mood Tracker";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = NO;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (

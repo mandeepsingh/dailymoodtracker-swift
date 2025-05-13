@@ -1,21 +1,28 @@
 import StoreKit
 import Foundation
+#if DEBUG
+import SwiftUI
+#endif
 
 // Make ThemeManager inherit from NSObject
 class ThemeManager: NSObject, ObservableObject, SKProductsRequestDelegate {
     
+    #if DEBUG
+    @Published var developerModeEnabled = false
+    #endif
+    
     static let shared = ThemeManager()
     let themeProductIDs = [
         "com.compileandcry.dailymoodtracker.darktheme",
-        "com.compileandcry.DailyMoodTracker.tidestheme",
-        "com.compileandcry.DailyMoodTracker.meadowtheme",
-        "com.compileandcry.DailyMoodTracker.sunlighttheme"
+        "com.compileandcry.dailymoodtracker.tidestheme",
+        "com.compileandcry.dailymoodtracker.meadowtheme",
+        "com.compileandcry.dailymoodtracker.sunlighttheme"
     ]
     let themeToProductIDMap: [String: String] = [
         "dark": "com.compileandcry.dailymoodtracker.darktheme",
-        "tides": "com.compileandcry.DailyMoodTracker.tidestheme",
-        "meadow": "com.compileandcry.DailyMoodTracker.meadowtheme",
-        "sunlight": "com.compileandcry.DailyMoodTracker.sunlighttheme"
+        "tides": "com.compileandcry.dailymoodtracker.tidestheme",
+        "meadow": "com.compileandcry.dailymoodtracker.meadowtheme",
+        "sunlight": "com.compileandcry.dailymoodtracker.sunlighttheme"
     ]
     
     // Define themes first so they can be referenced for initialization
@@ -55,14 +62,22 @@ class ThemeManager: NSObject, ObservableObject, SKProductsRequestDelegate {
             price: "$1.99",
             colors: ThemeColors.meadow
         )
-        
     ]
 
+    // URLs for receipt validation
+    private let sandboxVerifyURL = "https://sandbox.itunes.apple.com/verifyReceipt"
+    private let productionVerifyURL = "https://buy.itunes.apple.com/verifyReceipt"
+    
+    // Your app's shared secret for receipt validation
+    private let appSharedSecret = "36f0fee96ec946f68c5ce3137138e38d" // Add your App Store Connect shared secret here
+    
     private var productsRequest: SKProductsRequest?
+    private var receiptRefreshRequest: SKReceiptRefreshRequest?
     // Add this property to store products fetched from App Store
     private(set) var products: [SKProduct] = []
     @Published var purchasedThemes: [String] = []
     @Published var currentTheme: String = "default"
+    @Published var isLoading: Bool = false
     // Initialize with default theme colors directly
     @Published var currentThemeColors: ThemeColors = ThemeColors.defaultLight
     
@@ -72,6 +87,13 @@ class ThemeManager: NSObject, ObservableObject, SKProductsRequestDelegate {
     // Need to use override init() since we're inheriting from NSObject
     override init() {
         super.init()
+        
+        // Setup debug features for simulators
+          #if DEBUG
+          if isRunningInSimulator() {
+              print("Running in simulator - StoreKit functionality may be limited")
+          }
+          #endif
         
         // Load saved data after initialization
         if let savedThemes = UserDefaults.standard.stringArray(forKey: purchasedThemesKey) {
@@ -87,6 +109,37 @@ class ThemeManager: NSObject, ObservableObject, SKProductsRequestDelegate {
         setupStoreKit()
     }
     
+    #if DEBUG
+    func toggleDeveloperMode() {
+        developerModeEnabled = !developerModeEnabled
+        
+        if developerModeEnabled {
+            // In developer mode, unlock all themes
+            let allThemeIds = ThemeManager.allThemes.compactMap { theme in
+                return theme.isPremium ? theme.id : nil
+            }
+            addPurchasedThemes(themeIds: allThemeIds)
+        } else {
+            // When toggling off, restore to actual purchases
+            if let savedThemes = UserDefaults.standard.stringArray(forKey: purchasedThemesKey) {
+                purchasedThemes = savedThemes
+            } else {
+                purchasedThemes = ["default"]
+            }
+        }
+        
+        // Notify observers
+        objectWillChange.send()
+    }
+    #endif
+    
+    private func isRunningInSimulator() -> Bool {
+        #if targetEnvironment(simulator)
+        return true
+        #else
+        return false
+        #endif
+    }
     
     // New method to update theme colors based on currentTheme
     private func updateThemeColors() {
@@ -120,13 +173,35 @@ class ThemeManager: NSObject, ObservableObject, SKProductsRequestDelegate {
     func request(_ request: SKRequest, didFailWithError error: Error) {
         print("Product request failed: \(error.localizedDescription)")
         
-        // Implement retry logic after delay
+        if request is SKReceiptRefreshRequest {
+            print("Receipt refresh failed: \(error.localizedDescription)")
+            
+            DispatchQueue.main.async {
+                self.isLoading = false
+                NotificationCenter.default.post(
+                    name: .purchaseFailed,
+                    object: nil,
+                    userInfo: ["error": "Failed to refresh receipt: \(error.localizedDescription)"]
+                )
+            }
+            return
+        }
+        
+        // Implement retry logic after delay for product requests
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
             // Only retry if we still don't have products
             if let self = self, self.products.isEmpty {
                 print("Retrying product request...")
                 self.setupStoreKit()
             }
+        }
+    }
+    
+    func requestDidFinish(_ request: SKRequest) {
+        if request is SKReceiptRefreshRequest {
+            print("Receipt refresh completed")
+            // Now that we have a fresh receipt, validate it
+            verifyReceipt()
         }
     }
     
@@ -190,17 +265,57 @@ class ThemeManager: NSObject, ObservableObject, SKProductsRequestDelegate {
             return
         }
         
+        // Set loading state
+        isLoading = true
+        
         // Post notification that restore started
         NotificationCenter.default.post(name: .restoreStarted, object: nil)
         
-        // Implement StoreKit restore purchases
-        SKPaymentQueue.default().restoreCompletedTransactions()
+        // First, verify the receipt
+        verifyReceipt()
+        
+        // Add a timeout in case the restore takes too long
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) { [weak self] in
+            if self?.isLoading == true {
+                self?.isLoading = false
+                NotificationCenter.default.post(
+                    name: .purchaseFailed,
+                    object: nil,
+                    userInfo: ["error": "Restore timed out. Please try again."]
+                )
+            }
+        }
     }
     
     func addPurchasedTheme(themeId: String) {
         if !purchasedThemes.contains(themeId) {
             purchasedThemes.append(themeId)
             saveThemes()
+        }
+    }
+    
+    // Add this method to add multiple purchased themes at once
+    func addPurchasedThemes(themeIds: [String]) {
+        var updated = false
+        
+        for themeId in themeIds {
+            if !purchasedThemes.contains(themeId) {
+                purchasedThemes.append(themeId)
+                updated = true
+            }
+        }
+        
+        if updated {
+            saveThemes()
+            
+            // Notify that themes were restored
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(
+                    name: .restoreCompleted,
+                    object: nil,
+                    userInfo: ["restoredThemes": themeIds]
+                )
+            }
         }
     }
     
@@ -216,31 +331,236 @@ class ThemeManager: NSObject, ObservableObject, SKProductsRequestDelegate {
         UserDefaults.standard.set(purchasedThemes, forKey: purchasedThemesKey)
     }
     
-    // Add this method for basic receipt validation
+    // Update the verifyReceipt method to validate with Apple's servers and extract purchases
     func verifyReceipt() {
-        // For production, you should implement server-side validation
-        // This is a basic client-side validation for testing
+            #if DEBUG
+            // In simulator with developer mode, skip validation
+            if isRunningInSimulator() && developerModeEnabled {
+                print("Developer mode enabled in simulator - skipping receipt validation")
+                DispatchQueue.main.async { [weak self] in
+                    self?.isLoading = false
+                    
+                    // Notify about successful "restore"
+                    let restoredThemes = self?.purchasedThemes ?? []
+                    NotificationCenter.default.post(
+                        name: .restoreCompleted,
+                        object: nil,
+                        userInfo: ["restoredCount": restoredThemes.count]
+                    )
+                }
+                return
+            }
+            #endif
         
         guard let receiptURL = Bundle.main.appStoreReceiptURL else {
             print("Receipt URL not found")
+            // Request a new receipt if none exists
+            refreshReceipt()
+            return
+        }
+        
+        guard FileManager.default.fileExists(atPath: receiptURL.path) else {
+            print("Receipt file doesn't exist")
+            refreshReceipt()
             return
         }
         
         guard let receiptData = try? Data(contentsOf: receiptURL) else {
             print("Receipt data could not be read")
+            refreshReceipt()
             return
         }
         
         let receiptBase64 = receiptData.base64EncodedString()
         
-        // In production, send receiptBase64 to your server for validation with Apple's servers
-        print("Receipt validation should be performed server-side")
-        
-        #if DEBUG
-        // For testing only - log receipt existence
-        print("Receipt exists with length: \(receiptBase64.count)")
-        #endif
+        // Create the request to Apple's servers
+        validateReceiptWithApple(receiptBase64: receiptBase64, isProduction: true)
     }
+    
+    // Method to validate receipt with Apple's servers
+    private func validateReceiptWithApple(receiptBase64: String, isProduction: Bool) {
+        // Prepare the request
+        let verifyURL = isProduction ? productionVerifyURL : sandboxVerifyURL
+        guard let url = URL(string: verifyURL) else {
+            print("Invalid verification URL")
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Create the request body
+        var requestBody: [String: Any] = [
+            "receipt-data": receiptBase64,
+            "exclude-old-transactions": false
+        ]
+        
+        // Add shared secret if available
+        if !appSharedSecret.isEmpty {
+            requestBody["password"] = appSharedSecret
+        }
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+        } catch {
+            print("Failed to create request body: \(error)")
+            return
+        }
+        
+        // Create the task
+        let task = URLSession.shared.dataTask(with: request) { [weak self] (data, response, error) in
+            // Handle network error
+            if let error = error {
+                print("Receipt validation network error: \(error)")
+                DispatchQueue.main.async {
+                    self?.isLoading = false
+                    
+                    // If production validation failed, try sandbox
+                    if isProduction {
+                        self?.validateReceiptWithApple(receiptBase64: receiptBase64, isProduction: false)
+                        return
+                    }
+                    
+                    // Both production and sandbox failed, fall back to StoreKit restore
+                    SKPaymentQueue.default().restoreCompletedTransactions()
+                }
+                return
+            }
+            
+            // Check HTTP response
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("Invalid HTTP response")
+                DispatchQueue.main.async {
+                    self?.isLoading = false
+                    SKPaymentQueue.default().restoreCompletedTransactions()
+                }
+                return
+            }
+            
+            // Check for successful status code
+            guard httpResponse.statusCode == 200 else {
+                print("HTTP error: \(httpResponse.statusCode)")
+                
+                // If production validation failed with non-200, try sandbox
+                if isProduction {
+                    DispatchQueue.main.async {
+                        self?.validateReceiptWithApple(receiptBase64: receiptBase64, isProduction: false)
+                    }
+                    return
+                }
+                
+                // Both production and sandbox failed, fall back to StoreKit restore
+                DispatchQueue.main.async {
+                    self?.isLoading = false
+                    SKPaymentQueue.default().restoreCompletedTransactions()
+                }
+                return
+            }
+            
+            // Parse response data
+            guard let data = data,
+                  let jsonResponse = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let status = jsonResponse["status"] as? Int else {
+                print("Invalid response data")
+                DispatchQueue.main.async {
+                    self?.isLoading = false
+                    SKPaymentQueue.default().restoreCompletedTransactions()
+                }
+                return
+            }
+            
+            // Check response status
+            if status != 0 {
+                print("Receipt validation error, status: \(status)")
+                
+                // Status 21007 means this is a sandbox receipt sent to production
+                if status == 21007 && isProduction {
+                    DispatchQueue.main.async {
+                        self?.validateReceiptWithApple(receiptBase64: receiptBase64, isProduction: false)
+                    }
+                    return
+                }
+                
+                // Other error, fall back to StoreKit restore
+                DispatchQueue.main.async {
+                    self?.isLoading = false
+                    SKPaymentQueue.default().restoreCompletedTransactions()
+                }
+                return
+            }
+            
+            // Process receipt information
+            self?.processReceiptResponse(jsonResponse)
+        }
+        
+        task.resume()
+    }
+    
+    // Process Apple's receipt validation response
+    private func processReceiptResponse(_ response: [String: Any]) {
+        // Extract in-app purchases
+        guard let receiptInfo = response["receipt"] as? [String: Any],
+              let inAppPurchases = receiptInfo["in_app"] as? [[String: Any]] else {
+            print("No in-app purchases found in receipt")
+            DispatchQueue.main.async {
+                self.isLoading = false
+                SKPaymentQueue.default().restoreCompletedTransactions()
+            }
+            return
+        }
+        
+        // Process all purchases from receipt
+        var restoredThemeIds: [String] = []
+        
+        for purchase in inAppPurchases {
+            guard let productId = purchase["product_id"] as? String else {
+                continue
+            }
+            
+            // Get the theme ID for this product
+            if let themeId = getThemeID(from: productId) {
+                restoredThemeIds.append(themeId)
+            }
+        }
+        
+        // Add all restored themes to purchased list
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // Add the restored themes
+            self.addPurchasedThemes(themeIds: restoredThemeIds)
+            
+            // Update UI state
+            self.isLoading = false
+            
+            // Notify about restore completion
+            let restoredCount = restoredThemeIds.count
+            NotificationCenter.default.post(
+                name: .restoreCompleted,
+                object: nil,
+                userInfo: [
+                    "restoredCount": restoredCount,
+                    "restoredThemes": restoredThemeIds
+                ]
+            )
+            
+            if restoredCount == 0 {
+                // If we didn't find any purchases in the receipt, fall back to StoreKit
+                SKPaymentQueue.default().restoreCompletedTransactions()
+            }
+        }
+    }
+    
+    // Add this method to refresh the receipt if it's missing
+    private func refreshReceipt() {
+        let request = SKReceiptRefreshRequest(receiptProperties: nil)
+        receiptRefreshRequest = request
+        request.delegate = self
+        request.start()
+        print("Refreshing App Store receipt...")
+    }
+    
     func fetchAvailableProducts() {
         // Request product information
         let request = SKProductsRequest(productIdentifiers: Set(themeProductIDs))
@@ -304,6 +624,7 @@ extension ThemeManager: SKPaymentTransactionObserver {
         
         // Update app state
         DispatchQueue.main.async { [weak self] in
+            self?.isLoading = false
             self?.addPurchasedTheme(themeId: themeId)
             
             // Post notification about successful purchase
@@ -315,17 +636,25 @@ extension ThemeManager: SKPaymentTransactionObserver {
         }
     }
 
+    // Update the handleRestoredTransaction method to be more robust
     private func handleRestoredTransaction(_ transaction: SKPaymentTransaction) {
-        let productId = transaction.original?.payment.productIdentifier ?? ""
+        let productId = transaction.original?.payment.productIdentifier ?? transaction.payment.productIdentifier
         
         // Get theme ID from product ID
         guard let themeId = getThemeID(from: productId) else {
-            print("Unknown product ID: \(productId)")
+            print("Unknown product ID during restore: \(productId)")
             return
         }
         
         DispatchQueue.main.async { [weak self] in
             self?.addPurchasedTheme(themeId: themeId)
+            
+            // Post notification that a theme was restored
+            NotificationCenter.default.post(
+                name: .purchaseCompleted,
+                object: nil,
+                userInfo: ["themeId": themeId, "restored": true]
+            )
         }
     }
 
@@ -337,6 +666,9 @@ extension ThemeManager: SKPaymentTransactionObserver {
             switch error.code {
             case .paymentCancelled:
                 // User cancelled - don't show an error
+                DispatchQueue.main.async { [weak self] in
+                    self?.isLoading = false
+                }
                 return
                 
             case .paymentInvalid:
@@ -360,7 +692,8 @@ extension ThemeManager: SKPaymentTransactionObserver {
             
             print("Transaction error: \(errorMessage)")
             
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [weak self] in
+                self?.isLoading = false
                 NotificationCenter.default.post(
                     name: .purchaseFailed,
                     object: nil,
@@ -370,20 +703,29 @@ extension ThemeManager: SKPaymentTransactionObserver {
         }
     }
     
-    // Handle restoration completion
+    // Enhance the paymentQueueRestoreCompletedTransactionsFinished method
     func paymentQueueRestoreCompletedTransactionsFinished(_ queue: SKPaymentQueue) {
-        print("Restore completed")
+        print("StoreKit restore completed")
         
-        DispatchQueue.main.async {
-            NotificationCenter.default.post(name: .restoreCompleted, object: nil)
+        // Check if we actually restored any themes
+        let restoredCount = purchasedThemes.count > 0 ? purchasedThemes.count - 1 : 0 // Subtract 1 for default theme
+        
+        DispatchQueue.main.async { [weak self] in
+            self?.isLoading = false
+            NotificationCenter.default.post(
+                name: .restoreCompleted,
+                object: nil,
+                userInfo: ["restoredCount": restoredCount]
+            )
         }
     }
     
     // Handle restoration failure
     func paymentQueue(_ queue: SKPaymentQueue, restoreCompletedTransactionsFailedWithError error: Error) {
-        print("Restore failed: \(error.localizedDescription)")
+        print("StoreKit restore failed: \(error.localizedDescription)")
         
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            self?.isLoading = false
             NotificationCenter.default.post(
                 name: .purchaseFailed,
                 object: nil,

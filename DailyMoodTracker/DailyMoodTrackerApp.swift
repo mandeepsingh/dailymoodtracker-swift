@@ -1,27 +1,54 @@
-// Update your existing App file
 import SwiftUI
 import CoreData
+import UIKit
 
-// In your App.swift file
+// Create a UIApplicationDelegate class for additional configuration
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        // Configure for iPad
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            // Set supported orientations
+            UIDevice.current.setValue(UIInterfaceOrientation.portrait.rawValue, forKey: "orientation")
+        }
+        return true
+    }
+}
+
 @main
 struct DailyMoodTrackerApp: App {
-    let persistenceController = PersistenceController.shared
+    // Connect the AppDelegate
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     
+    let persistenceController = PersistenceController.shared
     @StateObject private var themeManager = ThemeManager.shared
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            // Use modified ContentView with proper navigation structure
+            ModifiedContentView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
                 .environment(\.themeColors, themeManager.currentThemeColors)
                 .environmentObject(themeManager)
-                // Remove the preferredColorScheme modifier
         }
     }
     
     init() {
         // Configure StoreKit
         ThemeManager.shared.fetchAvailableProducts()
+        
+        // Configure navigation bar appearance
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        UINavigationBar.appearance().standardAppearance = appearance
+        UINavigationBar.appearance().scrollEdgeAppearance = appearance
+        
+        // Configure tab bar appearance
+        let tabBarAppearance = UITabBarAppearance()
+        tabBarAppearance.configureWithOpaqueBackground()
+        UITabBar.appearance().standardAppearance = tabBarAppearance
+        if #available(iOS 15.0, *) {
+            UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
+        }
         
         // Optional: Check if user is on a jailbroken device
         #if !DEBUG
@@ -43,5 +70,89 @@ struct DailyMoodTrackerApp: App {
             print("WARNING: Jailbreak detected")
         }
         #endif
+    }
+}
+
+// A modified ContentView that properly handles iPad navigation
+struct ModifiedContentView: View {
+    @EnvironmentObject private var themeManager: ThemeManager
+    
+    var body: some View {
+        // Check if we're on iPad
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            // iPad layout with proper navigation
+            TabView {
+                NavigationView {
+                    EntryView()
+                }
+                .navigationViewStyle(StackNavigationViewStyle()) // Force full-screen navigation
+                .tabItem {
+                    Label("New Entry", systemImage: "plus.circle")
+                }
+                
+                NavigationView {
+                    HistoryView()
+                }
+                .navigationViewStyle(StackNavigationViewStyle())
+                .tabItem {
+                    Label("History", systemImage: "list.bullet")
+                }
+                
+                NavigationView {
+                    TrendsView()
+                }
+                .navigationViewStyle(StackNavigationViewStyle())
+                .tabItem {
+                    Label("Trends", systemImage: "chart.line.uptrend.xyaxis")
+                }
+                
+                NavigationView {
+                    SettingsView()
+                }
+                .navigationViewStyle(StackNavigationViewStyle())
+                .tabItem {
+                    Label("Settings", systemImage: "gear")
+                }
+            }
+            .accentColor(themeManager.currentThemeColors.tabBarSelected)
+            .onAppear {
+                // Configure tab bar appearance for iPad
+                updateTabBarAppearance()
+            }
+            .onChange(of: themeManager.currentTheme) { _ in
+                updateTabBarAppearance()
+            }
+        } else {
+            // Regular iPhone layout - keep using your original ContentView
+            ContentView()
+        }
+    }
+    
+    private func updateTabBarAppearance() {
+        // Get colors from theme
+        let backgroundColor = UIColor(themeManager.currentThemeColors.tabBarBackground)
+        let selectedColor = UIColor(themeManager.currentThemeColors.tabBarSelected)
+        let unselectedColor = UIColor(themeManager.currentThemeColors.tabBarUnselected)
+        
+        // Configure appearance
+        let appearance = UITabBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = backgroundColor
+        
+        // Set colors for normal and selected states
+        appearance.stackedLayoutAppearance.normal.iconColor = unselectedColor
+        appearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: unselectedColor]
+        
+        appearance.stackedLayoutAppearance.selected.iconColor = selectedColor
+        appearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: selectedColor]
+        
+        // Apply appearance
+        UITabBar.appearance().standardAppearance = appearance
+        if #available(iOS 15.0, *) {
+            UITabBar.appearance().scrollEdgeAppearance = appearance
+        }
+        
+        // Set tint color explicitly
+        UITabBar.appearance().tintColor = selectedColor
     }
 }
