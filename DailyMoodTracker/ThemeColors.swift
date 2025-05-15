@@ -31,9 +31,9 @@ struct ThemeColors {
     // Default theme colors
     static let defaultLight = ThemeColors(
         primary: Color.purple,
-        background: Color(UIColor.systemBackground),
-        card: Color(UIColor.secondarySystemBackground),
-        text: Color(UIColor.label),
+        background: Color.white,
+        card: Color.gray.opacity(0.2),
+        text: Color.black,
         accent: Color.purple,
         shadow: Color.black.opacity(0.2),
         navBarBackground: Color.white,

@@ -33,18 +33,15 @@ struct ThemeStoreView: View {
         }
         .navigationTitle("Theme Store")
         .navigationBarTitleDisplayMode(.large)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbarBackground(themeManager.currentThemeColors.accent, for: .navigationBar)
+               .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .bottomBar) {
                 Button("Restore Purchases") {
                     restorePurchases()
                 }
                 .disabled(isLoading)
-            }
-            
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button("Back") {
-                    presentationMode.wrappedValue.dismiss()
-                }
             }
             
             #if DEBUG
@@ -106,12 +103,19 @@ struct ThemeStoreView: View {
             isLoading = false
         }
         .onAppear {
-            // Load products if not already loaded
-            if themeManager.products.isEmpty {
-                isLoading = true
-                themeManager.setupStoreKit()
+                // Load products if not already loaded
+                if themeManager.products.isEmpty {
+                    isLoading = true
+                    themeManager.setupStoreKit()
+                }
+                
+                // Update navigation bar appearance for this view
+                updateNavigationBarAppearance()
             }
-        }
+            .onChange(of: themeManager.currentTheme) { _ in
+                // Update navigation bar when theme changes
+                updateNavigationBarAppearance()
+            }
         .alert(isPresented: $showError) {
             Alert(
                 title: Text("Error"),
@@ -119,12 +123,19 @@ struct ThemeStoreView: View {
                 dismissButton: .default(Text("OK"))
             )
         }
-        // Add theme background support
-        .background(themeManager.currentThemeColors.background)
-        .scrollContentBackground(.hidden) // iOS 16+ to hide default background
+        .listStyle(PlainListStyle())
     }
     
-    // Helper to get formatted price
+    private func updateNavigationBarAppearance() {
+          let appearance = UINavigationBarAppearance()
+          appearance.configureWithOpaqueBackground()
+          appearance.backgroundColor = UIColor(themeManager.currentThemeColors.navBarBackground)
+          appearance.titleTextAttributes = [.foregroundColor: UIColor(themeManager.currentThemeColors.navBarText)]
+          
+          UINavigationBar.appearance().standardAppearance = appearance
+          UINavigationBar.appearance().scrollEdgeAppearance = appearance
+      }
+    
     func formattedPrice(for theme: Theme) -> String {
         guard theme.isPremium else { return "Free" }
         
@@ -158,7 +169,6 @@ struct ThemeStoreView: View {
     }
 }
 
-// Theme row in theme store - no changes needed
 struct ThemeRow: View {
     let theme: Theme
     let isPurchased: Bool

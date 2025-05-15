@@ -11,6 +11,18 @@ class ThemeManager: NSObject, ObservableObject, SKProductsRequestDelegate {
     @Published var developerModeEnabled = false
     #endif
     
+    private var isSandboxEnvironment: Bool {
+        #if DEBUG
+        return true
+        #else
+        // Check for sandbox receipt
+        if let receiptURL = Bundle.main.appStoreReceiptURL {
+            return receiptURL.lastPathComponent == "sandboxReceipt"
+        }
+        return false
+        #endif
+    }
+    static var debugThemes = false
     static let shared = ThemeManager()
     let themeProductIDs = [
         "com.compileandcry.dailymoodtracker.darktheme",
@@ -84,28 +96,42 @@ class ThemeManager: NSObject, ObservableObject, SKProductsRequestDelegate {
     private let purchasedThemesKey = "purchasedThemes"
     private let currentThemeKey = "currentTheme"
     
+    
     // Need to use override init() since we're inheriting from NSObject
     override init() {
         super.init()
         
-        // Setup debug features for simulators
-          #if DEBUG
-          if isRunningInSimulator() {
-              print("Running in simulator - StoreKit functionality may be limited")
-          }
-          #endif
+        #if DEBUG
+        if isRunningInSimulator() {
+            print("Running in simulator - StoreKit functionality may be limited")
+        }
+        #endif
         
-        // Load saved data after initialization
+        purchasedThemes = ["default"]
+        
+        // Load saved additional purchased themes
         if let savedThemes = UserDefaults.standard.stringArray(forKey: purchasedThemesKey) {
-            purchasedThemes = savedThemes
+            // Add saved themes but avoid duplicates
+            for theme in savedThemes {
+                if !purchasedThemes.contains(theme) {
+                    purchasedThemes.append(theme)
+                }
+            }
         }
         
+        // Get the saved current theme or use default
         if let savedTheme = UserDefaults.standard.string(forKey: currentThemeKey) {
-            currentTheme = savedTheme
-            // Update theme colors based on saved theme
-            updateThemeColors()
+            if purchasedThemes.contains(savedTheme) {
+                currentTheme = savedTheme
+            } else {
+                currentTheme = "default"
+                UserDefaults.standard.set("default", forKey: currentThemeKey)
+            }
+        } else {
+            UserDefaults.standard.set("default", forKey: currentThemeKey)
         }
         
+        updateThemeColors()
         setupStoreKit()
     }
     
@@ -143,9 +169,31 @@ class ThemeManager: NSObject, ObservableObject, SKProductsRequestDelegate {
     
     // New method to update theme colors based on currentTheme
     private func updateThemeColors() {
+        // Debug output to help identify the issue
+        print("Updating theme colors for: \(currentTheme)")
+        
         if let theme = ThemeManager.allThemes.first(where: { $0.id == currentTheme }) {
             currentThemeColors = theme.colors
+            print("Theme updated to: \(theme.name) (ID: \(theme.id))")
+            
+            // Print actual color values for debugging
+            print("Background: \(theme.colors.background)")
+            print("Card: \(theme.colors.card)")
+            print("Text: \(theme.colors.text)")
+        } else {
+            print("WARNING: Could not find theme with ID: \(currentTheme)")
+            print("Available themes: \(ThemeManager.allThemes.map { $0.id })")
+            
+            // Fallback to default - explicitly use defaultLight
+            currentThemeColors = ThemeColors.defaultLight
+            currentTheme = "default"
+            
+            // Save this to UserDefaults to ensure consistency
+            UserDefaults.standard.set("default", forKey: currentThemeKey)
         }
+        
+        // Always notify observers when theme colors change
+        objectWillChange.send()
     }
     
     func setupStoreKit() {
@@ -154,6 +202,11 @@ class ThemeManager: NSObject, ObservableObject, SKProductsRequestDelegate {
         
         // Fetch available products
         fetchAvailableProducts()
+        
+        // Log status after a delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            StoreKitHelper.shared.logStoreKitStatus()
+        }
     }
     
     func productsRequest(_ request: SKProductsRequest, didReceive response: SKProductsResponse) {
@@ -230,29 +283,48 @@ class ThemeManager: NSObject, ObservableObject, SKProductsRequestDelegate {
         return formatter.string(from: product.price) ?? "\(product.price)"
     }
     
+    // ThemeManager.swift
+    // Update the purchaseTheme method to add better logging for sandbox
+
     func purchaseTheme(themeId: String) {
+        print("Attempting to purchase theme: \(themeId)")
+        
         guard let product = getProduct(for: themeId) else {
-            // Notify about product not being available
+            let errorMessage = "Product not available for purchase"
+            print("Purchase error: \(errorMessage)")
             NotificationCenter.default.post(
                 name: .purchaseFailed,
                 object: nil,
-                userInfo: ["error": "Product not available for purchase"]
+                userInfo: ["error": errorMessage]
             )
             return
         }
         
         // Check if purchase is allowed
         if !SKPaymentQueue.canMakePayments() {
+            let errorMessage = "In-app purchases are not allowed on this device"
+            print("Purchase error: \(errorMessage)")
             NotificationCenter.default.post(
                 name: .purchaseFailed,
                 object: nil,
-                userInfo: ["error": "In-app purchases are not allowed on this device"]
+                userInfo: ["error": errorMessage]
             )
             return
         }
         
+        print("Initiating payment for product: \(product.productIdentifier)")
         let payment = SKPayment(product: product)
         SKPaymentQueue.default().add(payment)
+        
+        // In sandbox, payments should be approved quickly
+        print("Payment added to queue. In sandbox, you'll need to confirm with a test account password.")
+        
+        // For testing only - add a timeout warning
+        #if DEBUG
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+            print("⚠️ Payment taking longer than expected. In sandbox environment, make sure to respond to the App Store prompt.")
+        }
+        #endif
     }
     
     func restorePurchases() {
@@ -320,41 +392,40 @@ class ThemeManager: NSObject, ObservableObject, SKProductsRequestDelegate {
     }
     
     func setCurrentTheme(themeId: String) {
+        if ThemeManager.debugThemes {
+            print("Setting theme to: \(themeId)")
+            print("Call stack: \(Thread.callStackSymbols.joined(separator: "\n"))")
+        }
+        
         currentTheme = themeId
         UserDefaults.standard.set(themeId, forKey: currentThemeKey)
         
         // Update theme colors
         updateThemeColors()
+        
+        // Post a notification that theme changed so observers can update UI
+        NotificationCenter.default.post(name: .themeChanged, object: nil)
     }
     
     private func saveThemes() {
+        // Always ensure default is included
+        if !purchasedThemes.contains("default") {
+            purchasedThemes.append("default")
+        }
+        
         UserDefaults.standard.set(purchasedThemes, forKey: purchasedThemesKey)
+        
+        // Debug output
+        print("Saved purchased themes: \(purchasedThemes)")
     }
     
     // Update the verifyReceipt method to validate with Apple's servers and extract purchases
     func verifyReceipt() {
-            #if DEBUG
-            // In simulator with developer mode, skip validation
-            if isRunningInSimulator() && developerModeEnabled {
-                print("Developer mode enabled in simulator - skipping receipt validation")
-                DispatchQueue.main.async { [weak self] in
-                    self?.isLoading = false
-                    
-                    // Notify about successful "restore"
-                    let restoredThemes = self?.purchasedThemes ?? []
-                    NotificationCenter.default.post(
-                        name: .restoreCompleted,
-                        object: nil,
-                        userInfo: ["restoredCount": restoredThemes.count]
-                    )
-                }
-                return
-            }
-            #endif
+        // For App Store review, always check sandbox first
+        let shouldStartWithSandbox = isSandboxEnvironment
         
         guard let receiptURL = Bundle.main.appStoreReceiptURL else {
             print("Receipt URL not found")
-            // Request a new receipt if none exists
             refreshReceipt()
             return
         }
@@ -373,8 +444,8 @@ class ThemeManager: NSObject, ObservableObject, SKProductsRequestDelegate {
         
         let receiptBase64 = receiptData.base64EncodedString()
         
-        // Create the request to Apple's servers
-        validateReceiptWithApple(receiptBase64: receiptBase64, isProduction: true)
+        // Start with sandbox for review builds or when we detect sandbox receipt
+        validateReceiptWithApple(receiptBase64: receiptBase64, isProduction: !shouldStartWithSandbox)
     }
     
     // Method to validate receipt with Apple's servers
@@ -563,10 +634,35 @@ class ThemeManager: NSObject, ObservableObject, SKProductsRequestDelegate {
     
     func fetchAvailableProducts() {
         // Request product information
+        print("Fetching available products...")
         let request = SKProductsRequest(productIdentifiers: Set(themeProductIDs))
         productsRequest = request
         request.delegate = self
         request.start()
+        
+        // Set a timeout to retry if products aren't loaded
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) { [weak self] in
+            guard let self = self else { return }
+            if self.products.isEmpty {
+                print("Products not loaded after timeout, retrying...")
+                let newRequest = SKProductsRequest(productIdentifiers: Set(self.themeProductIDs))
+                self.productsRequest = newRequest
+                newRequest.delegate = self
+                newRequest.start()
+            }
+        }
+    }
+    
+    func printProductStatus() {
+        print("--- Product Status ---")
+        print("Products loaded: \(products.count)")
+        for product in products {
+            print("Product: \(product.productIdentifier), Title: \(product.localizedTitle)")
+        }
+        if products.isEmpty {
+            print("WARNING: No products loaded!")
+        }
+        print("---------------------")
     }
 }
 
@@ -577,6 +673,7 @@ extension Notification.Name {
     static let purchaseFailed = Notification.Name("PurchaseFailed")
     static let restoreStarted = Notification.Name("RestoreStarted")
     static let restoreCompleted = Notification.Name("RestoreCompleted")
+    static let themeChanged = Notification.Name("ThemeChanged")
 }
 
 // Extend to conform to SKPaymentTransactionObserver

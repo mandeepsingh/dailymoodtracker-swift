@@ -33,27 +33,85 @@ struct DailyMoodTrackerApp: App {
     }
     
     init() {
-        // Configure StoreKit
+        print("Initializing DailyMoodTrackerApp...")
+        
+        // First, ensure ThemeManager is fully initialized
+        _ = ThemeManager.shared
+        
+        // Then access saved theme
+        let savedTheme = UserDefaults.standard.string(forKey: "currentTheme") ?? "default"
+        print("Startup theme from UserDefaults: \(savedTheme)")
+        
+        #if DEBUG
+        print("DEBUG build: Ensuring default theme on startup")
+        ThemeManager.shared.setCurrentTheme(themeId: "default")
+        #else
+        // For production/TestFlight, respect saved theme but ensure it's valid
+        if ThemeManager.allThemes.contains(where: { $0.id == savedTheme }) {
+            ThemeManager.shared.setCurrentTheme(themeId: savedTheme)
+        } else {
+            ThemeManager.shared.setCurrentTheme(themeId: "default")
+        }
+        #endif
+        
+        // Add explicit product fetch
         ThemeManager.shared.fetchAvailableProducts()
         
-        // Configure navigation bar appearance
-        let appearance = UINavigationBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        UINavigationBar.appearance().standardAppearance = appearance
-        UINavigationBar.appearance().scrollEdgeAppearance = appearance
+        // Add delay to print product status for debugging
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            ThemeManager.shared.printProductStatus()
+        }
+        
+        // Configure navigation bar appearance with theme colors
+        updateNavigationAppearance()
         
         // Configure tab bar appearance
         let tabBarAppearance = UITabBarAppearance()
         tabBarAppearance.configureWithOpaqueBackground()
+        tabBarAppearance.backgroundColor = UIColor(ThemeManager.shared.currentThemeColors.tabBarBackground)
+        
+        // Set colors for normal and selected states
+        let unselectedColor = UIColor(ThemeManager.shared.currentThemeColors.tabBarUnselected)
+        let selectedColor = UIColor(ThemeManager.shared.currentThemeColors.tabBarSelected)
+        
+        tabBarAppearance.stackedLayoutAppearance.normal.iconColor = unselectedColor
+        tabBarAppearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: unselectedColor]
+        
+        tabBarAppearance.stackedLayoutAppearance.selected.iconColor = selectedColor
+        tabBarAppearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: selectedColor]
+        
         UITabBar.appearance().standardAppearance = tabBarAppearance
+        UITabBar.appearance().tintColor = selectedColor
+        
         if #available(iOS 15.0, *) {
             UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
         }
+        
+        print("App Store Review Environment Check:")
+        print("Bundle ID: \(Bundle.main.bundleIdentifier ?? "unknown")")
+        print("App Version: \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown")")
+        print("Build: \(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown")")
+
+        // Add environment detection
+        StoreKitHelper.shared.detectEnvironment()
         
         // Optional: Check if user is on a jailbroken device
         #if !DEBUG
         performJailbreakCheck()
         #endif
+    }
+
+    // Add this helper method
+    private func updateNavigationAppearance() {
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        
+        // Apply theme colors if available
+        appearance.backgroundColor = UIColor(ThemeManager.shared.currentThemeColors.navBarBackground)
+        appearance.titleTextAttributes = [.foregroundColor: UIColor(ThemeManager.shared.currentThemeColors.navBarText)]
+        
+        UINavigationBar.appearance().standardAppearance = appearance
+        UINavigationBar.appearance().scrollEdgeAppearance = appearance
     }
 
     // Add this method if you want to check for jailbreak (optional security measure)
@@ -116,17 +174,28 @@ struct ModifiedContentView: View {
             }
             .accentColor(themeManager.currentThemeColors.tabBarSelected)
             .onAppear {
-                // Configure tab bar appearance for iPad
                 updateTabBarAppearance()
+                updateNavigationBarAppearance()
             }
             .onChange(of: themeManager.currentTheme) { _ in
                 updateTabBarAppearance()
+                updateNavigationBarAppearance()
             }
         } else {
             // Regular iPhone layout - keep using your original ContentView
             ContentView()
         }
     }
+    
+    private func updateNavigationBarAppearance() {
+          let appearance = UINavigationBarAppearance()
+          appearance.configureWithOpaqueBackground()
+          appearance.backgroundColor = UIColor(themeManager.currentThemeColors.navBarBackground)
+          appearance.titleTextAttributes = [.foregroundColor: UIColor(themeManager.currentThemeColors.navBarText)]
+          
+          UINavigationBar.appearance().standardAppearance = appearance
+          UINavigationBar.appearance().scrollEdgeAppearance = appearance
+      }
     
     private func updateTabBarAppearance() {
         // Get colors from theme

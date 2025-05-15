@@ -11,10 +11,9 @@ struct SettingsView: View {
     @State private var showingExportSheet = false
     @State private var exportedFileURL: URL?
     @State private var showingClearConfirmation = false
+    @State private var showClearConfirmationSheet = false // Add this for iPad
     @State private var showingExportSuccess = false
     @State private var showingClearSuccess = false
-    @State private var showPrivacySheet = false
-    @State private var showTermsSheet = false
     
     var body: some View {
         // Removed the outer NavigationView since it's provided in ModifiedContentView
@@ -33,7 +32,17 @@ struct SettingsView: View {
                 }
                 
                 Button("Clear All Data") {
+                    #if targetEnvironment(macCatalyst) || os(iOS)
+                    if UIDevice.current.userInterfaceIdiom == .pad {
+                        // Use sheet for iPad
+                        showClearConfirmationSheet = true
+                    } else {
+                        // Use dialog for iPhone
+                        showingClearConfirmation = true
+                    }
+                    #else
                     showingClearConfirmation = true
+                    #endif
                 }
                 .foregroundColor(.red)
             } header: {
@@ -53,11 +62,15 @@ struct SettingsView: View {
                 }
                 
                 Button("Privacy Policy") {
-                    showPrivacySheet = true
+                    if let url = URL(string: "http://daily-mood-tracker.com/mobile-privacy") {
+                        UIApplication.shared.open(url)
+                    }
                 }
-                
+
                 Button("Terms of Use") {
-                    showTermsSheet = true
+                    if let url = URL(string: "http://daily-mood-tracker.com/mobile-terms") {
+                        UIApplication.shared.open(url)
+                    }
                 }
                 
                 Button("Rate App") {
@@ -68,6 +81,9 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Settings")
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbarBackground(themeManager.currentThemeColors.accent, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .confirmationDialog(
             "Clear All Data",
             isPresented: $showingClearConfirmation,
@@ -80,6 +96,15 @@ struct SettingsView: View {
         } message: {
             Text("This will permanently delete all your mood entries. This action cannot be undone.")
         }
+        .sheet(isPresented: $showClearConfirmationSheet) {
+            DeleteConfirmationView(
+                isPresented: $showClearConfirmationSheet,
+                onConfirm: {
+                    clearAllData()
+                }
+            )
+            .environmentObject(themeManager)
+        }
         .alert("Data Exported", isPresented: $showingExportSuccess) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -90,21 +115,38 @@ struct SettingsView: View {
         } message: {
             Text("All mood entries have been permanently deleted.")
         }
-        .sheet(isPresented: $showingExportSheet) {
-            if let fileURL = exportedFileURL {
-                ActivityViewController(items: [fileURL], isPresented: $showingExportSheet)
-            }
-        }
-        .sheet(isPresented: $showPrivacySheet) {
-            PrivacyPolicyView()
-        }
-        .sheet(isPresented: $showTermsSheet) {
-            TermsOfUseView()
-        }
         // Add theme-based styling for the list
         .listStyle(InsetGroupedListStyle())
-        .background(themeManager.currentThemeColors.background)
-        .scrollContentBackground(.hidden) // iOS 16+ to hide default background
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("OpenThemeStore"))) { _ in
+            navigateToThemeStore()
+        }
+        .onAppear {
+            updateNavigationBarAppearance()
+        }
+        .onChange(of: themeManager.currentTheme) { _ in
+            updateNavigationBarAppearance()
+        }
+    }
+    
+    private func updateNavigationBarAppearance() {
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor(themeManager.currentThemeColors.navBarBackground)
+        appearance.titleTextAttributes = [.foregroundColor: UIColor(themeManager.currentThemeColors.navBarText)]
+        
+        UINavigationBar.appearance().standardAppearance = appearance
+        UINavigationBar.appearance().scrollEdgeAppearance = appearance
+    }
+    
+    private func navigateToThemeStore() {
+        // Directly present ThemeStoreView
+        if let window = UIApplication.shared.windows.first,
+           let rootViewController = window.rootViewController {
+            let themeStoreView = ThemeStoreView()
+                .environmentObject(themeManager)
+            let hostingController = UIHostingController(rootView: themeStoreView)
+            rootViewController.present(hostingController, animated: true)
+        }
     }
     
     // Function to export all mood data to JSON
@@ -204,119 +246,71 @@ struct SettingsView: View {
     }
 }
 
-// Keep the PrivacyPolicyView, TermsOfUseView, and ActivityViewController unchanged
-
-struct PrivacyPolicyView: View {
-    @Environment(\.presentationMode) var presentationMode
+// Add the DeleteConfirmationView for iPad
+struct DeleteConfirmationView: View {
+    @Binding var isPresented: Bool
+    var onConfirm: () -> Void
+    @EnvironmentObject private var themeManager: ThemeManager
     
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    Text("Privacy Policy")
-                        .font(.title)
-                        .fontWeight(.bold)
-                    
-                    Group {
-                        Text("Last Updated: April 23, 2025")
-                            .fontWeight(.semibold)
-                        
-                        Text("This Privacy Policy describes how your personal information is collected, used, and shared when you use the DailyMoodTracker app.")
-                        
-                        Text("Information We Collect")
-                            .font(.headline)
-                        
-                        Text("DailyMoodTracker stores all user data locally on your device. We do not collect, store, or transmit your mood entries or personal information to our servers.")
-                        
-                        Text("In-App Purchases")
-                            .font(.headline)
-                        
-                        Text("When you make an in-app purchase, the transaction is processed by Apple. We receive only anonymized information about purchases to validate them. Your payment information is never shared with us.")
-                        
-                        Text("Data Export")
-                            .font(.headline)
-                        
-                        Text("Any data exported from the app is controlled by you and shared at your discretion. We do not have access to exported data files.")
-                        
-                        Text("Changes to this Policy")
-                            .font(.headline)
-                        
-                        Text("We may update this privacy policy from time to time. We will notify you of any changes by posting the new privacy policy in the app.")
-                        
-                        Text("Contact Us")
-                            .font(.headline)
-                        
-                        Text("If you have any questions about our privacy practices or this policy, please contact us at mandeep.wsu@gmail.com.")
+            VStack(spacing: 20) {
+                Spacer()
+                
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 70))
+                    .foregroundColor(.red)
+                    .padding(.bottom, 20)
+                
+                Text("Clear All Data")
+                    .font(.title)
+                    .fontWeight(.bold)
+                
+                Text("This will permanently delete all your mood entries.")
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+                
+                Text("This action cannot be undone.")
+                    .fontWeight(.semibold)
+                    .foregroundColor(.red)
+                    .padding(.top, 10)
+                
+                Spacer()
+                
+                HStack(spacing: 30) {
+                    Button(action: {
+                        isPresented = false
+                    }) {
+                        Text("Cancel")
+                            .frame(minWidth: 120)
+                            .padding()
+                            .background(Color.gray.opacity(0.2))
+                            .cornerRadius(10)
                     }
                     
-                    Spacer()
-                }
-                .padding()
-            }
-            .navigationBarTitle("Privacy Policy", displayMode: .inline)
-            .navigationBarItems(trailing: Button("Done") {
-                presentationMode.wrappedValue.dismiss()
-            })
-        }
-    }
-}
-
-struct TermsOfUseView: View {
-    @Environment(\.presentationMode) var presentationMode
-    
-    var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    Text("Terms of Use")
-                        .font(.title)
-                        .fontWeight(.bold)
-                    
-                    Group {
-                        Text("Last Updated: April 23, 2025")
-                            .fontWeight(.semibold)
-                        
-                        Text("By downloading or using the DailyMoodTracker app, you agree to be bound by these Terms of Use.")
-                        
-                        Text("App License")
-                            .font(.headline)
-                        
-                        Text("DailyMoodTracker grants you a limited, non-transferable, non-exclusive license to use the Application on any iOS products that you own or control.")
-                        
-                        Text("In-App Purchases")
-                            .font(.headline)
-                        
-                        Text("DailyMoodTracker offers premium themes via in-app purchases. All purchases are final and non-refundable, except as required by law. Premium content is linked to your Apple ID.")
-                        
-                        Text("User Data")
-                            .font(.headline)
-                        
-                        Text("You retain all rights to your mood entries and personal data. We do not claim ownership of your content.")
-                        
-                        Text("Prohibited Uses")
-                            .font(.headline)
-                        
-                        Text("You agree not to use the app for any illegal purpose or to violate any local, state, national, or international law.")
-                        
-                        Text("Termination")
-                            .font(.headline)
-                        
-                        Text("We may terminate or suspend your access to the app immediately, without prior notice or liability, for any reason, including without limitation if you breach these Terms of Use.")
-                        
-                        Text("Changes to Terms")
-                            .font(.headline)
-                        
-                        Text("We reserve the right to modify these terms at any time. We will provide notice of any significant changes.")
+                    Button(action: {
+                        onConfirm()
+                        isPresented = false
+                    }) {
+                        Text("Delete All Data")
+                            .frame(minWidth: 120)
+                            .padding()
+                            .background(Color.red)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
                     }
-                    
-                    Spacer()
                 }
-                .padding()
+                
+                Spacer()
             }
-            .navigationBarTitle("Terms of Use", displayMode: .inline)
-            .navigationBarItems(trailing: Button("Done") {
-                presentationMode.wrappedValue.dismiss()
+            .padding()
+            .frame(maxWidth: 500)
+            .navigationTitle("Confirm Deletion")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(trailing: Button("Dismiss") {
+                isPresented = false
             })
+            .background(themeManager.currentThemeColors.background.edgesIgnoringSafeArea(.all))
         }
     }
 }

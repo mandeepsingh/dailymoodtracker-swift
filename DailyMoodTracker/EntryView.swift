@@ -7,6 +7,7 @@ struct EntryView: View {
     @State private var selectedMood: Int = 2 // Default to Neutral (middle option)
     @State private var note: String = ""
     @State private var showAlert = false
+    @State private var showingThemeStore = false
     
     // Simplified moods: Sad (1), Neutral (2), Happy (3)
     let moodEmojis = ["😢", "😐", "😊"]
@@ -17,7 +18,10 @@ struct EntryView: View {
         ZStack {
             // Background color from theme
             themeManager.currentThemeColors.background
-                .ignoresSafeArea()
+            .ignoresSafeArea(.all) // Use .all instead of specific area
+            .onAppear {
+                print("EntryView appeared with background: \(themeManager.currentThemeColors.background)")
+            }
             
             ScrollView {
                 VStack {
@@ -55,17 +59,16 @@ struct EntryView: View {
                     }
                     .padding(.horizontal)
                     
-                    Text("Notes (optional):")
+                    Text("Notes")
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .foregroundColor(themeManager.currentThemeColors.text)
                         .padding(.horizontal)
                         .padding(.top)
                     
+
                     TextEditor(text: $note)
                         .frame(height: 150)
                         .padding()
-                        .background(Color.white)
-                        .foregroundColor(.black)
                         .cornerRadius(8)
                         .padding(.horizontal)
                     
@@ -81,11 +84,34 @@ struct EntryView: View {
                             .cornerRadius(10)
                             .padding()
                     }
+                    Button(action: {
+                        showingThemeStore = true
+                    }) {
+                        HStack {
+                            Text("Theme Store")
+                        }
+                        .foregroundColor(.white)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(themeManager.currentThemeColors.primary)
+                        .cornerRadius(10)
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                    }
+                    .sheet(isPresented: $showingThemeStore) {
+                        ThemeStoreView()
+                            .environmentObject(themeManager)
+                            .environment(\.managedObjectContext, viewContext)
+                    }
                     
                     Spacer()
                 }
                 .padding()
             }
+            .contentShape(Rectangle())  // Make the whole area tappable
+               .onTapGesture {
+                   hideKeyboard()
+               }
         }
         .navigationTitle("New Entry")
         .toolbarColorScheme(.dark, for: .navigationBar)
@@ -123,3 +149,12 @@ struct EntryView: View {
         }
     }
 }
+
+// Add this extension at the bottom of EntryView.swift file
+#if canImport(UIKit)
+extension View {
+    func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+}
+#endif
