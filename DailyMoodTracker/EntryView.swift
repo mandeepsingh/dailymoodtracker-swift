@@ -68,6 +68,8 @@ struct EntryView: View {
 
                     TextEditor(text: $note)
                         .frame(height: 150)
+                        .scrollContentBackground(.hidden)
+                        .foregroundColor(themeManager.currentThemeColors.text)
                         .padding()
                         .cornerRadius(8)
                         .padding(.horizontal)

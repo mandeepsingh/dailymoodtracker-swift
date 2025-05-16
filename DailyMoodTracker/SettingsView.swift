@@ -11,9 +11,12 @@ struct SettingsView: View {
     @State private var showingExportSheet = false
     @State private var exportedFileURL: URL?
     @State private var showingClearConfirmation = false
-    @State private var showClearConfirmationSheet = false // Add this for iPad
     @State private var showingExportSuccess = false
     @State private var showingClearSuccess = false
+    
+    init() {
+        UITextView.appearance().backgroundColor = .clear
+    }
     
     var body: some View {
         // Removed the outer NavigationView since it's provided in ModifiedContentView
@@ -32,17 +35,7 @@ struct SettingsView: View {
                 }
                 
                 Button("Clear All Data") {
-                    #if targetEnvironment(macCatalyst) || os(iOS)
-                    if UIDevice.current.userInterfaceIdiom == .pad {
-                        // Use sheet for iPad
-                        showClearConfirmationSheet = true
-                    } else {
-                        // Use dialog for iPhone
-                        showingClearConfirmation = true
-                    }
-                    #else
                     showingClearConfirmation = true
-                    #endif
                 }
                 .foregroundColor(.red)
             } header: {
@@ -96,15 +89,6 @@ struct SettingsView: View {
         } message: {
             Text("This will permanently delete all your mood entries. This action cannot be undone.")
         }
-        .sheet(isPresented: $showClearConfirmationSheet) {
-            DeleteConfirmationView(
-                isPresented: $showClearConfirmationSheet,
-                onConfirm: {
-                    clearAllData()
-                }
-            )
-            .environmentObject(themeManager)
-        }
         .alert("Data Exported", isPresented: $showingExportSuccess) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -129,14 +113,14 @@ struct SettingsView: View {
     }
     
     private func updateNavigationBarAppearance() {
-        let appearance = UINavigationBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor(themeManager.currentThemeColors.navBarBackground)
-        appearance.titleTextAttributes = [.foregroundColor: UIColor(themeManager.currentThemeColors.navBarText)]
-        
-        UINavigationBar.appearance().standardAppearance = appearance
-        UINavigationBar.appearance().scrollEdgeAppearance = appearance
-    }
+           let appearance = UINavigationBarAppearance()
+           appearance.configureWithOpaqueBackground()
+           appearance.backgroundColor = UIColor(themeManager.currentThemeColors.navBarBackground)
+           appearance.titleTextAttributes = [.foregroundColor: UIColor(themeManager.currentThemeColors.navBarText)]
+           
+           UINavigationBar.appearance().standardAppearance = appearance
+           UINavigationBar.appearance().scrollEdgeAppearance = appearance
+       }
     
     private func navigateToThemeStore() {
         // Directly present ThemeStoreView
@@ -242,75 +226,6 @@ struct SettingsView: View {
             showingClearSuccess = true
         } catch {
             print("Error clearing data: \(error)")
-        }
-    }
-}
-
-// Add the DeleteConfirmationView for iPad
-struct DeleteConfirmationView: View {
-    @Binding var isPresented: Bool
-    var onConfirm: () -> Void
-    @EnvironmentObject private var themeManager: ThemeManager
-    
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                Spacer()
-                
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 70))
-                    .foregroundColor(.red)
-                    .padding(.bottom, 20)
-                
-                Text("Clear All Data")
-                    .font(.title)
-                    .fontWeight(.bold)
-                
-                Text("This will permanently delete all your mood entries.")
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-                
-                Text("This action cannot be undone.")
-                    .fontWeight(.semibold)
-                    .foregroundColor(.red)
-                    .padding(.top, 10)
-                
-                Spacer()
-                
-                HStack(spacing: 30) {
-                    Button(action: {
-                        isPresented = false
-                    }) {
-                        Text("Cancel")
-                            .frame(minWidth: 120)
-                            .padding()
-                            .background(Color.gray.opacity(0.2))
-                            .cornerRadius(10)
-                    }
-                    
-                    Button(action: {
-                        onConfirm()
-                        isPresented = false
-                    }) {
-                        Text("Delete All Data")
-                            .frame(minWidth: 120)
-                            .padding()
-                            .background(Color.red)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                    }
-                }
-                
-                Spacer()
-            }
-            .padding()
-            .frame(maxWidth: 500)
-            .navigationTitle("Confirm Deletion")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarItems(trailing: Button("Dismiss") {
-                isPresented = false
-            })
-            .background(themeManager.currentThemeColors.background.edgesIgnoringSafeArea(.all))
         }
     }
 }
